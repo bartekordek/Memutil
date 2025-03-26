@@ -1,0 +1,242 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "[LINUX][RUN][libculTests_static][DEBUG]",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Linux/libculTests_static.bin",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/runDir",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "[LINUX][DEBUG][BUILLD][libculTests_static]",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][04_Hello-Triangle]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/04_Hello-Triangle.exe",
+            "cwd": "${workspaceRoot}/04_Hello-Triangle",
+            // "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][04_Hello-Triangle_refactor]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/04_Hello-Triangle_refactor.exe",
+            "cwd": "${workspaceRoot}/04_Hello-Triangle_refactor",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][05_Shaders]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/05_Shaders.exe",
+            "cwd": "${workspaceRoot}/05_Shaders",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][05_Shaders_refactor]",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/05_Shaders_refactor.exe",
+            "cwd": "${workspaceRoot}/05_Shaders_refactor",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][06_Textures]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/06_Textures.exe",
+            "cwd": "${workspaceRoot}/06_Textures",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            },
+            "preLaunchTask": "[WINDOWS][DEBUG][BUILLD][06_Textures]"
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][06_Textures_refactor]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/06_Textures_refactor.exe",
+            "cwd": "${workspaceRoot}/06_Textures_refactor",
+            "symbolSearchPath": "${workspaceRoot}/06_Textures_refactor",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            },
+            "preLaunchTask": "[WINDOWS][DEBUG][BUILLD][06_Textures_refactor]"
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][09_Camera]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/09_Camera.exe",
+            "cwd": "${workspaceRoot}/09_Camera",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            },
+            "preLaunchTask": "[WINDOWS][DEBUG][BUILLD][09_Camera]"
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][09_Camera_refactor]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/09_Camera_refactor.exe",
+            "cwd": "${workspaceRoot}/09_Camera_refactor",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            },
+            "preLaunchTask": "[WINDOWS][DEBUG][BUILLD][09_Camera_refactor]"
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][10_Lighting_Colors]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/10_Lighting_Colors.exe",
+            "cwd": "${workspaceRoot}/10_Lighting_Colors",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][11_Basic_Lighting]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/11_Basic_Lighting.exe",
+            "cwd": "${workspaceRoot}/11_Basic_Lighting",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        },
+        {
+            "name": "[WINDOWS][DEBUG][RUN][11_Basic_Lighting_refactor]",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Build-Windows/Debug/11_Basic_Lighting_refactor.exe",
+            "cwd": "${workspaceRoot}/11_Basic_Lighting_refactor",
+            "symbolSearchPath": "${workspaceRoot}/runDir",
+            "args": [
+                "-w",
+                "1280",
+                "-h",
+                "800"
+            ],
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false,
+                "trace": true,
+            }
+        }
+    ]
+}

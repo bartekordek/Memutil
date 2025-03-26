@@ -1,0 +1,36 @@
+[submodule "deps/boost/stacktrace"]
+	path = deps/boost/stacktrace
+	url = git@github.com:boostorg/stacktrace.git
+[submodule "deps/boost/winapi"]
+	path = deps/boost/winapi
+	url = git@github.com:boostorg/winapi.git
+[submodule "deps/boost/core"]
+	path = deps/boost/core
+	url = git@github.com:boostorg/core.git
+[submodule "deps/boost/assert"]
+	path = deps/boost/assert
+	url = git@github.com:boostorg/assert.git
+[submodule "deps/boost/config"]
+	path = deps/boost/config
+	url = git@github.com:boostorg/config.git
+[submodule "deps/boost/predef"]
+	path = deps/boost/predef
+	url = git@github.com:boostorg/predef.git
+[submodule "deps/boost/container_hash"]
+	path = deps/boost/container_hash
+	url = git@github.com:boostorg/container_hash.git
+[submodule "deps/boost/describe"]
+	path = deps/boost/describe
+	url = git@github.com:boostorg/describe.git
+[submodule "deps/boost/mp11"]
+	path = deps/boost/mp11
+	url = git@github.com:boostorg/mp11.git
+[submodule "deps/boost/static_assert"]
+	path = deps/boost/static_assert
+	url = git@github.com:boostorg/static_assert.git
+[submodule "deps/boost/throw_exception"]
+	path = deps/boost/throw_exception
+	url = git@github.com:boostorg/throw_exception.git
+[submodule "deps/googletest"]
+	path = deps/googletest
+	url = git@github.com:google/googletest.git
