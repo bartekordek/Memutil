@@ -52,7 +52,7 @@ private:
     void decode( const StackInfo& stackInfo );
     bool m_initialized{ false };
     std::thread m_mainLoopThread;
-    bool m_runMainLoop{ true };
+    bool m_runMainLoop{ false };
     void mainLoop();
     mutable std::mutex g_traceDequeMtx;
 

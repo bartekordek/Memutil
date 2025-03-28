@@ -45,13 +45,16 @@ MemoryPoolTests::MemoryPoolTests()
 
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION )
 {
-    MU::Memutil::getInstance().toggleTracking( true );
+    MU::Memutil& instance = MU::Memutil::getInstance();
+    instance.toggleTracking( true );
 
     TestClass<8>* tc = new TestClass<8>();
-    MU::Memutil::getInstance().dumpActiveAllocations();
+    instance.waitForAllCallStacksToBeDecoded();
+    instance.dumpActiveAllocations();
 
 
     delete tc;
+    instance.toggleTracking( false );
 }
 
 TEST_F( MemoryPoolTests, TEST_MULTIPLE_ALLOCATION )

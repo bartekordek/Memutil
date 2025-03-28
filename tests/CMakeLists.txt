@@ -44,8 +44,8 @@ target_include_directories(${EXEC} PRIVATE src)
 if (MSVC)
     set_target_properties( ${EXEC} PROPERTIES LINK_FLAGS "/INCREMENTAL:NO" )
 
-    message( "[MU test] Setting MU tests run dir to: ${MU_TESTS_RUN_DIR}" )
-    set_target_properties( ${EXEC} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${MU_TESTS_RUN_DIR}" )
+    message( "[MU test] Setting MU tests run dir to: ${CMAKE_CURRENT_SOURCE_DIR}" )
+    set_target_properties( ${EXEC} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
     set_target_properties( ${EXEC} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS  "--gtest_break_on_failure" )
 
     if( ${CMAKE_BUILD_TYPE} MATCHES "Debug" )

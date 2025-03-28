@@ -49,10 +49,10 @@ PRIVATE boost_stacktrace
 )
 
 if (MSVC)
-    list(APPEND DEPENDENCIES PRIVATE boost_winapi)
-    list(APPEND DEPENDENCIES PRIVATE boost_stacktrace_windbg_cached)
+    list(APPEND DEPENDENCIES PUBLIC boost_winapi)
+    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_windbg_cached)
 else()
-    list(APPEND DEPENDENCIES PRIVATE boost_stacktrace_basic)
+    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_basic)
 endif()
 
 message( "DEPENDENCIES: ${DEPENDENCIES}" )
@@ -71,6 +71,7 @@ else()
 endif()
 
 if( MSVC )
+
 else()
     if( NOT APPLE )
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")

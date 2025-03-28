@@ -1,4 +1,4 @@
-#include <MemUtil/Memutil.hpp>
+#include "MemUtil/Memutil.hpp"
 #include <MemUtil/STL_Imports/STD_deque.hpp>
 #include <MemUtil/STL_Imports/STD_iostream.hpp>
 #include <MemUtil/STL_Imports/STD_cstdio.hpp>
@@ -10,12 +10,13 @@ namespace MU
 
 void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace::stacktrace& stackTrace );
 	
-thread_local bool g_blockCurrentThread = false;
+thread_local bool g_blockCurrentThread{ false };
+bool g_isDecoding{ false };
 
 struct StackInfo final
 {
     bool Register{ true };
-    std::unique_ptr<boost::stacktrace::stacktrace> Trace;
+    boost::stacktrace::stacktrace* Trace{ nullptr };
     std::size_t Size{ 0u };
     void* Data{ nullptr };
     std::size_t SkipFirstLinesCount{ 0u };
@@ -24,7 +25,6 @@ struct StackInfo final
 
     StackInfo( bool inRegister, std::size_t inSize, void* inPtr, std::size_t inSkipFirstLinesCount ):
         Register( inRegister ),
-        Trace( std::make_unique<boost::stacktrace::stacktrace>() ),
         Size( inSize ),
         Data( inPtr ),
         SkipFirstLinesCount( inSkipFirstLinesCount )
@@ -34,7 +34,7 @@ struct StackInfo final
     StackInfo( const StackInfo& rhv ) = delete;
     StackInfo( StackInfo&& arg ) noexcept:
         Register( arg.Register ),
-        Trace( std::move( arg.Trace ) ),
+        Trace( arg.Trace ),
         Size( arg.Size ),
         Data( arg.Data ),
         SkipFirstLinesCount( arg.SkipFirstLinesCount )
@@ -42,6 +42,7 @@ struct StackInfo final
         arg.Size = 0u;
         arg.Data = nullptr;
         arg.SkipFirstLinesCount = 0u;
+        arg.Trace = nullptr;
     }
 
     StackInfo& operator=( const StackInfo& arg ) = delete;
@@ -50,25 +51,30 @@ struct StackInfo final
         if( this != &arg )
         {
             Register = arg.Register;
-            Trace = std::move( arg.Trace );
+            std::swap( Trace, arg.Trace );
             Size = arg.Size;
-            Data = arg.Data;
+            std::swap( Data, arg.Data );
             SkipFirstLinesCount = arg.SkipFirstLinesCount;
 
             arg.Size = 0u;
-            arg.Data = nullptr;
         }
         return *this;
     }
 
     ~StackInfo()
     {
-
+        delete Trace;
+        Trace = nullptr;
     }
 };
 
 namespace Deque
 {
+static constexpr std::uint64_t PoolSize = 8u * 1024u * 1024u;  // 16MB
+std::array<std::byte, PoolSize> BufferBlocks;
+std::pmr::monotonic_buffer_resource BufferSrc{ BufferBlocks.data(), PoolSize };
+
+std::pmr::deque<StackInfo> g_traceDeque{ &BufferSrc };
 }  // namespace Deque
 
 Memutil& Memutil::getInstance()
@@ -81,19 +87,32 @@ Memutil::Memutil()
 {
 }
 
+void Memutil::toggleTracking( bool inToggleTracking )
+{
+    if( inToggleTracking == true )
+    {
+        if( m_runMainLoop == false )
+        {
+            init();
+        }
+    }
+
+    m_enableTracking = inToggleTracking;
+}
 void Memutil::init()
 {
     if( m_initialized )
     {
         return;
     }
+    m_runMainLoop = true;
     m_mainLoopThread = std::thread( &Memutil::mainLoop, this );
     m_initialized = true;
 }
 
 void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount )
 {
-    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) )
+    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecoding == true) )
     {
         return;
     }
@@ -103,7 +122,7 @@ void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize, 
 
 void Memutil::logAlloc( void* inPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount )
 {
-    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) )
+    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecoding == true ) )
     {
         return;
     }
@@ -113,7 +132,7 @@ void Memutil::logAlloc( void* inPtr, std::uint64_t inSize, std::size_t skipFirst
 
 void Memutil::logFree( void* inPtr )
 {
-    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) )
+    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecoding == true ) )
     {
         return;
     }
@@ -121,50 +140,60 @@ void Memutil::logFree( void* inPtr )
     unregisterStack( inPtr, 0u, 0u );
 }
 
-void Memutil::toggleTracking( bool inToggleTracking )
+void Memutil::registerStack( void* ptr, std::uint64_t inSize, std::size_t skipFirstLinesCount )
 {
-    m_enableTracking = inToggleTracking;
-}
-
-void Memutil::registerStack( void* ptr, std::uint64_t inSize, std::size_t /*skipFirstLinesCount*/ )
-{
-    if( inSize == 0u )
-    {
-        return;
-    }
-
+    StackInfo si;
+    si.Data = ptr;
+    si.Register = true;
+    si.Size = inSize;
+    si.SkipFirstLinesCount = skipFirstLinesCount;
     g_blockCurrentThread = true;
-    ScopeExit se( [] (){
-            g_blockCurrentThread = false;
-    });
+    si.Trace = new boost::stacktrace::stacktrace();
+    g_blockCurrentThread = false;
 
-    boost::stacktrace::stacktrace currentStackTrace;
-
-    if( currentStackTrace.empty() )
-    {
-        return;
-    }
-
-    AllocationInfo ai;
-    convertBoostToAllocationInfo( ai, currentStackTrace );
-    ai.Size = inSize;
-    std::lock_guard<std::mutex> locker( m_dataMtx );
-    m_allocations[ptr] = ai;
+    std::lock_guard<std::mutex> locker( g_traceDequeMtx );
+    Deque::g_traceDeque.emplace_back( std::move( si ) );
 }
 
-void Memutil::unregisterStack( void* ptr, std::uint64_t /*inSize*/, std::size_t /*skipFirstLinesCount*/ )
+void Memutil::unregisterStack( void* ptr, std::uint64_t inSize, std::size_t skipFirstLinesCount )
 {
-    std::lock_guard<std::mutex> locker( m_dataMtx );
-    const auto it = m_allocations.find( ptr );
-    if( it != m_allocations.end() )
-    {
-        m_allocations.erase( it );
-    }
+    StackInfo si;
+    si.Data = ptr;
+    si.Register = false;
+    si.Size = inSize;
+    si.SkipFirstLinesCount = skipFirstLinesCount;
+
+    std::lock_guard<std::mutex> locker( g_traceDequeMtx );
+    Deque::g_traceDeque.emplace_back( std::move( si ) );
 }
 
 void Memutil::mainLoop()
 {
-
+    StackInfo currentTrace;
+    bool found{ false };
+    while( m_runMainLoop )
+    {
+        {
+            std::lock_guard<std::mutex> locker( g_traceDequeMtx );
+            if( Deque::g_traceDeque.empty() == false )
+            {
+                g_blockCurrentThread = true;
+                currentTrace = std::move( Deque::g_traceDeque.back() );
+                Deque::g_traceDeque.pop_back();
+                g_blockCurrentThread = false;
+                found = true;
+            }
+            else
+            {
+                found = false;
+            }
+        }
+        if( found )
+        {
+            decode( currentTrace );
+            found = false;
+        }
+    }
 }
 
 void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace::stacktrace& stackTrace )
@@ -190,19 +219,14 @@ void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace:
 
         constexpr std::size_t bufferSize{ 1024 };
         char buffer[bufferSize];
-
         std::string sourceFile = currentTraceLine.source_file();
         if( sourceFile.empty() )
         {
             sourceFile = "unkown";
         }
 
-        if( sourceFile.find( "stacktrace.hpp" ) != std::string::npos )
-        {
-            continue;
-        }
-
-        if( sourceFile.find( "Memutil.cpp" ) != std::string::npos )
+        if( ( sourceFile.find( "stacktrace.hpp" ) != std::string::npos ) ||
+            ( sourceFile.find( "MemoryUtils." ) != std::string::npos ) )
         {
             continue;
         }
@@ -216,11 +240,12 @@ void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace:
             break;
         }
     }
-    out.Size = outputStackSize;
 }
 
 void Memutil::decode( const StackInfo& stackInfo )
 {
+    g_isDecoding = true;
+
     if( stackInfo.Register )
     {
         AllocationInfo ai;
@@ -240,12 +265,12 @@ void Memutil::decode( const StackInfo& stackInfo )
             m_allocations.erase( it );
         }
     }
+    g_isDecoding = false;
 }
 
 void Memutil::getStackHere( StackLinesArray& outStackLines, std::size_t skipFirstLinesCount )
 {
     g_blockCurrentThread = true;
-
     ScopeExit se(
         []()
         {
@@ -306,6 +331,13 @@ void Memutil::dumpActiveAllocations() const
 
 bool Memutil::waitForAllCallStacksToBeDecoded() const
 {
+    bool dequeIsEmpty{ false };
+    while( ( dequeIsEmpty == false ) || ( g_isDecoding == true ) )
+    {
+        std::lock_guard<std::mutex> locker( g_traceDequeMtx );
+        dequeIsEmpty = Deque::g_traceDeque.empty();
+    }
+
     return true;
 }
 
