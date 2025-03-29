@@ -9,7 +9,7 @@ namespace MU
 {
 
 void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace::stacktrace& stackTrace );
-	
+
 thread_local bool g_blockCurrentThread{ false };
 bool g_isDecoding{ false };
 
@@ -112,7 +112,7 @@ void Memutil::init()
 
 void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount )
 {
-    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecoding == true) )
+    if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecoding == true ) )
     {
         return;
     }
@@ -225,8 +225,7 @@ void convertBoostToAllocationInfo( AllocationInfo& out, const boost::stacktrace:
             sourceFile = "unkown";
         }
 
-        if( ( sourceFile.find( "stacktrace.hpp" ) != std::string::npos ) ||
-            ( sourceFile.find( "MemoryUtils." ) != std::string::npos ) )
+        if( ( sourceFile.find( "stacktrace.hpp" ) != std::string::npos ) || ( sourceFile.find( "MemoryUtils." ) != std::string::npos ) )
         {
             continue;
         }
@@ -320,7 +319,7 @@ void Memutil::dumpActiveAllocations() const
     std::lock_guard<std::mutex> locker( m_dataMtx );
     for( const auto& [addr, stackInfo] : m_allocations )
     {
-        printf( "Stack info:\nsize:%lld bytes\n", stackInfo.Size );
+        printf( "Stack info:\nsize:%ld bytes\n", stackInfo.Size );
 
         for( const auto& line : stackInfo.StackLines )
         {
@@ -356,4 +355,4 @@ Memutil::~Memutil()
     }
 }
 
-}
+}  // namespace MU

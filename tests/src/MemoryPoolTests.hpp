@@ -52,6 +52,11 @@ protected:
     virtual void TearDown()
     {
     }
+
+    std::uint64_t getRandom( std::uint64_t from, std::uint64_t to );
+
+private:
+    
 };
 
 #ifdef _MSC_VER
