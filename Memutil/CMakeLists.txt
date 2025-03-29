@@ -35,6 +35,9 @@ source_group( TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES} )
 add_library( ${PROJECT_NAME_DYNAMIC} SHARED ${SOURCES} )
 add_library( ${PROJECT_NAME} STATIC ${SOURCES} )
 
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/inc )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/src )
+
 set( DEPENDENCIES
 PUBLIC boost_assert
 PRIVATE boost_config
@@ -78,6 +81,19 @@ else()
     endif()
 endif()
 
+set(BOOST_ROOT $ENV{MU_DEPS_PATH}/boost)
+message("BOOST_ROOT: ${BOOST_ROOT}")
+
+include_directories( ${BOOST_ROOT}/assert/include )
+include_directories( ${BOOST_ROOT}/config/include )
+include_directories( ${BOOST_ROOT}/container_hash/include )
+include_directories( ${BOOST_ROOT}/core/include )
+include_directories( ${BOOST_ROOT}/describe/include )
+include_directories( ${BOOST_ROOT}/predef/include )
+include_directories( ${BOOST_ROOT}/stacktrace/include )
+include_directories( ${BOOST_ROOT}/static_assert/include )
+include_directories( ${BOOST_ROOT}/throw_exception/include )
+include_directories( ${BOOST_ROOT}/winapi/include )
 
 target_include_directories(${PROJECT_NAME} PUBLIC inc)
 target_include_directories(${PROJECT_NAME} PRIVATE src)

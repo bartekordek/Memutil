@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.0.0)
-
 project(mem_util_main)
 
 set(default_build_type "Debug")
@@ -39,20 +37,12 @@ set(ENV{MU_ROOT_DIR} ${MU_ROOT_DIR})
 
 set(MU_ROOT_DIR ${CMAKE_SOURCE_DIR})
 message("MU_ROOT_DIR: ${MU_ROOT_DIR}")
-if(MSVC)
-    set(MU_OUTPUT_DIR ${MU_ROOT_DIR}/Build-Windows)
-else()
-    set(MU_OUTPUT_DIR ${MU_ROOT_DIR}/Build-Linux)
-endif()
 
 set(ENV{MU_OUTPUT_DIR} ${MU_OUTPUT_DIR})
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${MU_OUTPUT_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${MU_OUTPUT_DIR})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${MU_OUTPUT_DIR})
-
 set(MU_DEPS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/deps)
+set(ENV{MU_DEPS_PATH} ${MU_DEPS_PATH})
 add_subdirectory(${MU_DEPS_PATH}/boost/assert)
 add_subdirectory(${MU_DEPS_PATH}/boost/config)
 add_subdirectory(${MU_DEPS_PATH}/boost/container_hash)
