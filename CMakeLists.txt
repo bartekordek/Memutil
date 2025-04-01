@@ -1,3 +1,5 @@
+cmake_minimum_required (VERSION 3.5)
+
 project(mem_util_main)
 
 set(default_build_type "Debug")
