@@ -17,12 +17,29 @@ My motivation to create such a library:
 - The main reason for this library is for me to learn.
 - Also, as it is a utility library, the main functionality is to have some repeating code in one, easy-to-use place.
 
-## Installation
+## Usage
 
 Just add ```memutil``` to your cmake project.
 Just like examples, take a look at:
 ```
 tests/CMakeLists.txt
+```
+
+Place allocation calls in your allocation methods, for example:
+
+```
+void* operator new( std::size_t size )
+{
+    void* result = std::malloc( size );
+    MU::Memutil::getInstance().logAlloc( result, size );
+    return result;
+}
+
+void operator delete( void* ptr ) noexcept
+{
+    MU::Memutil::getInstance().logFree( ptr );
+    std::free( ptr );
+}
 ```
 
 
