@@ -314,18 +314,70 @@ void Memutil::getStackHere( StackLinesArray& outStackLines, std::size_t skipFirs
     }
 }
 
-void Memutil::dumpActiveAllocations() const
+void Memutil::dumpActiveAllocationsToOutput() const
 {
     std::lock_guard<std::mutex> locker( m_dataMtx );
     for( const auto& [addr, stackInfo] : m_allocations )
     {
+#if defined( _MSC_VER )
+        printf( "Stack info:\nsize:%lld bytes\n", stackInfo.Size );
+#else // #if defined(_MSC_VER)
         printf( "Stack info:\nsize:%ld bytes\n", stackInfo.Size );
+#endif // #if defined(_MSC_VER)
 
         for( const auto& line : stackInfo.StackLines )
         {
             printf( "%s\n", line.c_str() );
         }
     }
+}
+
+bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const
+{
+    bool result{ true };
+
+    std::memset( outBuffer, 0, inBufferCapacity );
+
+    std::size_t firstEmptyChar{ 0u };
+    std::size_t bufferLeft{ inBufferCapacity };
+    std::size_t currentWordSize{ 0u };
+
+    std::lock_guard<std::mutex> locker( m_dataMtx );
+
+    for( const auto& [addr, stackInfo] : m_allocations )
+    {
+#if defined( _MSC_VER )
+        currentWordSize = snprintf( outBuffer, bufferLeft, "Stack info:\nsize:%lld bytes\n", stackInfo.Size );
+#else   // #if defined( _MSC_VER )
+        currentWordSize = snprintf( outBuffer, bufferLeft, "Stack info:\nsize:%ld bytes\n", stackInfo.Size );
+#endif  // #if defined( _MSC_VER )
+
+        if( currentWordSize < 1 )
+        {
+            return false;
+        }
+
+        firstEmptyChar += currentWordSize;
+        bufferLeft -= currentWordSize;
+        outBuffer += currentWordSize;
+
+        for( const auto& line : stackInfo.StackLines )
+        {
+            currentWordSize = snprintf( outBuffer, bufferLeft, "%s\n", line.c_str() );
+
+            if( currentWordSize < 1 )
+            {
+                return false;
+            }
+
+            constexpr std::size_t charSize = sizeof(char);
+
+            firstEmptyChar += currentWordSize;
+            outBuffer += currentWordSize;
+            bufferLeft -= currentWordSize;
+        }
+    }
+    return true;
 }
 
 bool Memutil::waitForAllCallStacksToBeDecoded() const
