@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.5)
 
 project(mem_util_main)
 
+include(CTest)
+
 set(default_build_type "Debug")
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
@@ -67,3 +69,5 @@ set(OPTION_BUILD_TESTS OFF CACHE BOOL "Disable testing" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(OPTION_SELF_CONTAINED ON CACHE BOOL "" FORCE)
 set(OPTION_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+add_test(NAME tests_bin COMMAND tests_bin)
