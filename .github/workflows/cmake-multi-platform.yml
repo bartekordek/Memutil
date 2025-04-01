@@ -64,4 +64,5 @@ jobs:
     - name: Test
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      shell: cmd
       run: ${{github.workspace}}/bin/tests_bin
