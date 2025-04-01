@@ -38,8 +38,31 @@ public:
     MULib_API void logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount = 0 );
     MULib_API void logAlloc( void* inPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount = 0 );
     MULib_API void logFree( void* inPtr );
+
+
+    /**
+     * Start or stop logging callstacks.
+     * 
+     * \param inToggleTracking true to start, false to stop logging.
+     * \return 
+     */
     MULib_API void toggleTracking( bool inToggleTracking );
-    MULib_API void dumpActiveAllocations() const;
+
+    /**
+     * Dumps all active allocations to standard output.
+     * 
+     * \return 
+     */
+    MULib_API void dumpActiveAllocationsToOutput() const;
+
+    /**
+     * Dumps all active allocations to char buffer.
+     * 
+     * \param outBuffer Buffer to be filled.
+     * \param inBufferCapacity Buffer to be filled - size.
+     * \return true if all data has been placed on buffer and false if buffer is too small.
+     */
+    MULib_API bool dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const;
     MULib_API bool waitForAllCallStacksToBeDecoded() const;
     MULib_API std::int32_t getActiveAllocations() const;
 
