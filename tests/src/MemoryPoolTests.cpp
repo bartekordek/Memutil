@@ -53,15 +53,28 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION )
 
     TestClass<8>* tc = new TestClass<8>();
     instance.waitForAllCallStacksToBeDecoded();
-    instance.dumpActiveAllocations();
+    instance.dumpActiveAllocationsToOutput();
 
     delete tc;
     instance.toggleTracking( false );
 }
 
-TEST_F( MemoryPoolTests, TEST_MULTIPLE_ALLOCATION )
+TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 {
-    // TODO:
+    constexpr std::size_t buffSize{ 2048 };
+    char* charOutput = new char[buffSize];
+
+    MU::Memutil& instance = MU::Memutil::getInstance();
+    instance.toggleTracking( true );
+
+    TestClass<8>* tc = new TestClass<8>();
+    instance.waitForAllCallStacksToBeDecoded();
+    instance.dumpActiveAllocationsToBuffer( charOutput, buffSize );
+
+    delete tc;
+    instance.toggleTracking( false );
+
+    delete[] charOutput;
 }
 
 TEST_F( MemoryPoolTests, SpeedBenchmark )
@@ -80,13 +93,13 @@ TEST_F( MemoryPoolTests, SpeedBenchmark )
 
     auto runAllocations = [&samples]()
     {
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start = std::chrono::steady_clock::now();
         for( std::size_t i = 0; i < testSampleCount; ++i )
         {
             std::byte* allocatedMemory = new std::byte[samples[i]];
             delete[] allocatedMemory;
         }
-        auto elapsed = std::chrono::high_resolution_clock::now() - start;
+        auto elapsed = std::chrono::steady_clock::now() - start;
         std::uint64_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count();
         return static_cast<float>( milliseconds );
     };
