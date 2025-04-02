@@ -6,7 +6,7 @@
 #include <MemUtil/STL_Imports/STD_thread.hpp>
 #include <MemUtil/STL_Imports/STD_mutex.hpp>
 #include <MemUtil/STL_Imports/STD_memory_resource.hpp>
-#include <MemUtil/STL_Imports/STD_unordered_map.hpp>
+#include <MemUtil/STL_Imports/STD_set.hpp>
 
 
 namespace MU
@@ -20,9 +20,43 @@ struct AllocationInfo
 {
     std::uint64_t Size{ 0u };
     StackLinesArray StackLines;
+
+    bool operator==( const AllocationInfo& arg ) const
+    {
+        if( Size != arg.Size )
+        {
+            return false;
+        }
+
+        return StackLines == arg.StackLines;
+    }
+
+    bool operator<( const AllocationInfo& arg ) const
+    {
+        for( std::size_t i = 0u; i < G_maxStackSize; ++i )
+        {
+            if( StackLines[i] == arg.StackLines[i] )
+            {
+                continue;
+            }
+
+            return StackLines[i] < arg.StackLines[i];
+        }
+
+        return false;
+    }
+
+    std::set<void*> Ptrs;
 };
 
 struct StackInfo;
+
+enum class SortType : std::int8_t
+{
+    None = -1,
+    SizeAsceding,
+    SizeDescending
+};
 
 class Memutil final
 {
@@ -84,6 +118,6 @@ private:
     static constexpr std::uint64_t PoolSize = 2u * 1024u * 1024u;  // 2MB
     std::array<std::byte, PoolSize> m_bufferBlocks;
     std::pmr::monotonic_buffer_resource m_buffer_src{ m_bufferBlocks.data(), PoolSize };
-    std::pmr::unordered_map<void*, AllocationInfo> m_allocations{ &m_buffer_src };
+    std::pmr::set<AllocationInfo> m_allocations{ &m_buffer_src };
 };
 }

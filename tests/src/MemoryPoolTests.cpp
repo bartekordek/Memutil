@@ -59,6 +59,31 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION )
     instance.toggleTracking( false );
 }
 
+TEST_F( MemoryPoolTests, TwoAllocations )
+{
+    std::size_t allocCount{ 2u };
+
+    std::vector<TestClass<8>*> pointers;
+    pointers.resize( allocCount );
+
+    MU::Memutil& instance = MU::Memutil::getInstance();
+    instance.toggleTracking( true );
+
+    for( std::size_t i = 0u; i < allocCount; ++i )
+    {
+        pointers[i] = new TestClass<8>();
+    }
+
+    instance.waitForAllCallStacksToBeDecoded();
+    instance.dumpActiveAllocationsToOutput();
+
+    for( std::size_t i = 0u; i < allocCount; ++i )
+    {
+        delete pointers[i];
+    }
+    instance.toggleTracking( false );
+}
+
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 {
     constexpr std::size_t buffSize{ 2048 };
@@ -70,6 +95,8 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
     TestClass<8>* tc = new TestClass<8>();
     instance.waitForAllCallStacksToBeDecoded();
     instance.dumpActiveAllocationsToBuffer( charOutput, buffSize );
+
+    printf( "char buff:\n%s\n", charOutput );
 
     delete tc;
     instance.toggleTracking( false );
@@ -117,9 +144,7 @@ TEST_F( MemoryPoolTests, SpeedBenchmark )
     printf( "Tracked is %2.0f%% longer than untracked.\n", ( 100.0 * with / without ) - 100.0f );
 }
 
-TEST_F( MemoryPoolTests, TESTING_1 )
-{
-}
+
 
 std::uint64_t MemoryPoolTests::getRandom( std::uint64_t from, std::uint64_t to )
 {
