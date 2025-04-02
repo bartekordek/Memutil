@@ -23,7 +23,7 @@ public:
     }
 
     StringStatic( const StringStatic& arg ):
-        m_size( arg.size )
+        m_size( arg.m_size )
     {
         BOOST_ASSERT_MSG( m_size < Capacity, "TOO SMALL BUFFER!" );
         std::strcpy( m_value, arg.m_value );
@@ -66,6 +66,27 @@ public:
         std::strcpy( m_value, arg );
 
         return *this;
+    }
+
+    template <std::uint16_t CapacityArg>
+    bool operator==(const StringStatic<CapacityArg>& arg) const
+    {
+        if constexpr( CapacityArg != Capacity )
+        {
+            return false;
+        }
+
+        return operator==( arg.m_value );
+    }
+
+    bool operator==( const char* arg ) const
+    {
+        return std::strcmp( m_value, arg ) == 0;
+    }
+
+    bool operator<(const StringStatic& arg) const
+    {
+        return std::strcmp( m_value, arg.m_value ) < 0;
     }
 
     void append( const char* inStr )
