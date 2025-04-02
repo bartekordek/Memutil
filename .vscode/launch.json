@@ -5,13 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "[LINUX][RUN][libculTests_static][DEBUG]",
+            "name": "[LINUX][DEBUG][BUILLD][run_tests][DEBUG]",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Build-Linux/libculTests_static.bin",
+            "program": "${workspaceFolder}/Build/tests/tests_bin",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/runDir",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -22,7 +22,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "[LINUX][DEBUG][BUILLD][libculTests_static]",
+            "preLaunchTask": "[LINUX][DEBUG][BUILLD][tests]",
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
