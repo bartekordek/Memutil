@@ -3,6 +3,8 @@
 #include <MemUtil/STL_Imports/STD_cstdint.hpp>
 #include <MemUtil/Generic/Import_boost_assert.hpp>
 #include <MemUtil/STL_Imports/STD_cstring.hpp>
+#include <MemUtil/STL_Imports/STD_cstdarg.hpp>
+#include <MemUtil/STL_Imports/STD_iostream.hpp>
 
 namespace MU
 {
@@ -68,6 +70,14 @@ public:
         return *this;
     }
 
+    void createFrom( const char* msg... )
+    {
+        va_list args;
+        va_start( args, msg );
+        m_size = static_cast<std::uint16_t>( vsnprintf( m_value, m_capacity, msg, args ) );
+        va_end( args );
+    }
+
     template <std::uint16_t CapacityArg>
     bool operator==(const StringStatic<CapacityArg>& arg) const
     {
@@ -110,6 +120,14 @@ public:
         m_size += 1;
     }
 
+    void appendFrom( const char* msg... )
+    {
+        va_list args;
+        va_start( args, msg );
+        m_size += static_cast<std::uint16_t>( vsnprintf( m_value + m_size, m_capacity, msg, args ) );
+        va_end( args );
+    }
+
     void print() const
     {
     }
@@ -117,6 +135,27 @@ public:
     const char* c_str() const
     {
         return m_value;
+    }
+
+    char* getRawBuffer()
+    {
+        return m_value;
+    }
+
+    std::size_t getCapacity() const
+    {
+        return m_capacity;
+    }
+
+    void clear()
+    {
+        m_size = 0u;
+        std::memset( m_value, 0, m_capacity );
+    }
+
+    bool empty() const
+    {
+        return m_size == 0u;
     }
 
     ~StringStatic()
@@ -127,5 +166,6 @@ protected:
 private:
     char m_value[Capacity]{};
     std::uint16_t m_size{ 0u };
+    std::size_t m_capacity{ Capacity };
 };
 }  // namespace MU

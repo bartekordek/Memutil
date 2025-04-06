@@ -26,6 +26,8 @@ else()
     add_definitions( -Wfatal-errors )
 endif()
 
+add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)
+
 ###################################################################
 
 file( GLOB_RECURSE SOURCES inc/*.hpp src/*.hpp src/*.cpp )
@@ -49,6 +51,7 @@ PRIVATE boost_predef
 PRIVATE boost_static_assert
 PRIVATE boost_throw_exception
 PRIVATE boost_stacktrace
+PUBLIC TracyClient
 )
 
 if (MSVC)
@@ -94,6 +97,9 @@ include_directories( ${BOOST_ROOT}/stacktrace/include )
 include_directories( ${BOOST_ROOT}/static_assert/include )
 include_directories( ${BOOST_ROOT}/throw_exception/include )
 include_directories( ${BOOST_ROOT}/winapi/include )
+include_directories( $ENV{MU_DEPS_PATH}/deps/tracy/public )
 
 target_include_directories(${PROJECT_NAME} PUBLIC inc)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
+
+add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)

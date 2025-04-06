@@ -6,7 +6,8 @@
                 "${workspaceFolder}/MemUtil/inc",
                 "${workspaceFolder}/MemUtil/src",
                 "${workspaceFolder}/deps/boost/assert/include",
-                "${workspaceFolder}/deps/boost/stacktrace/include"
+                "${workspaceFolder}/deps/boost/stacktrace/include",
+                "${workspaceFolder}/deps/tracy/public"
             ],
             "defines": [
                 "_DEBUG",
@@ -26,7 +27,8 @@
                 "${workspaceFolder}/MemUtil/inc",
                 "${workspaceFolder}/MemUtil/src",
                 "${workspaceFolder}/deps/boost/assert/include",
-                "${workspaceFolder}/deps/boost/stacktrace/include"
+                "${workspaceFolder}/deps/boost/stacktrace/include",
+                "${workspaceFolder}/deps/tracy/public"
             ],
             "defines": [
                 "_DEBUG",

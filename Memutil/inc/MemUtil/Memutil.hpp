@@ -2,51 +2,55 @@
 
 #include <MemUtil/Import.hpp>
 #include <MemUtil/Generic/StringStatic.hpp>
+#include <MemUtil/Import_boost_stacktrace.hpp>
+#include <MemUtil/Generic/StackContainer.hpp>
 #include <MemUtil/STL_Imports/STD_array.hpp>
 #include <MemUtil/STL_Imports/STD_thread.hpp>
-#include <MemUtil/STL_Imports/STD_mutex.hpp>
 #include <MemUtil/STL_Imports/STD_memory_resource.hpp>
 #include <MemUtil/STL_Imports/STD_set.hpp>
+#include <MemUtil/STL_Imports/STD_memory.hpp>
+#include <MemUtil/STL_Imports/STD_deque.hpp>
+#include <MemUtil/STL_Imports/STD_map.hpp>
 
 
 namespace MU
 {
+class IMutex;
+
+enum class EStackType : std::int8_t
+{
+    None = -1,
+    Allocation,
+    Deallocation
+};
+
+
 constexpr std::uint8_t G_maxStackSize = 16u;
 
-using StackLineString = StringStatic<256>;
-using StackLinesArray = std::array<StackLineString, G_maxStackSize>;
+using CStackString = StringStatic<512>;
 
-struct AllocationInfo
+
+class AllocationInfo final
 {
+public:
     std::uint64_t Size{ 0u };
-    StackLinesArray StackLines;
+    void* Ptr{ nullptr };
+    CStackString StackString;
+    boost::stacktrace::stacktrace Trace;
+    EStackType Type{ EStackType::None };
 
-    bool operator==( const AllocationInfo& arg ) const
-    {
-        if( Size != arg.Size )
-        {
-            return false;
-        }
+    AllocationInfo();
+    AllocationInfo( AllocationInfo&& arg ) noexcept;
+    AllocationInfo& operator=( AllocationInfo&& arg ) noexcept;
 
-        return StackLines == arg.StackLines;
-    }
+    AllocationInfo( const AllocationInfo& ) = delete;
+    AllocationInfo& operator=( const AllocationInfo& ) = delete;
 
-    bool operator<( const AllocationInfo& arg ) const
-    {
-        for( std::size_t i = 0u; i < G_maxStackSize; ++i )
-        {
-            if( StackLines[i] == arg.StackLines[i] )
-            {
-                continue;
-            }
+    ~AllocationInfo();
 
-            return StackLines[i] < arg.StackLines[i];
-        }
+protected:
+private:
 
-        return false;
-    }
-
-    std::set<void*> Ptrs;
 };
 
 struct StackInfo;
@@ -69,8 +73,8 @@ public:
 
     MULib_API void init();
 
-    MULib_API void logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount = 0 );
-    MULib_API void logAlloc( void* inPtr, std::uint64_t inSize, std::size_t skipFirstLinesCount = 0 );
+    MULib_API void logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize );
+    MULib_API void logAlloc( void* inPtr, std::uint64_t inSize );
     MULib_API void logFree( void* inPtr );
 
 
@@ -99,25 +103,38 @@ public:
     MULib_API bool dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const;
     MULib_API bool waitForAllCallStacksToBeDecoded() const;
     MULib_API std::int32_t getActiveAllocations() const;
+    MULib_API void releaseCallstack( boost::stacktrace::stacktrace* inCallstack );
 
 private:
     MULib_API Memutil();
-    void getStackHere( StackLinesArray& outStackLines, std::size_t skipFirstLinesCount = 0 );
     MULib_API ~Memutil();
-    void registerStack( void* ptr, std::uint64_t inSize, std::size_t skipFirstLinesCount );
-    void unregisterStack( void* ptr, std::uint64_t inSize, std::size_t skipFirstLinesCount );
-    void decode( const StackInfo& stackInfo );
+    void registerStack( void* ptr, std::uint64_t inSize );
+    void unregisterStack( void* ptr, std::uint64_t inSize );
+    void decode( AllocationInfo* stackInfo );
     bool m_initialized{ false };
     std::thread m_mainLoopThread;
     bool m_runMainLoop{ false };
     void mainLoop();
-    mutable std::mutex g_traceDequeMtx;
+    boost::stacktrace::stacktrace* createStackTrace();
+    AllocationInfo* fetchAllocationInfo();
+    void convertBoostToAllocationInfo( AllocationInfo* inOut );
 
     bool m_enableTracking{ false };
-    mutable std::mutex m_dataMtx;
-    static constexpr std::uint64_t PoolSize = 2u * 1024u * 1024u;  // 2MB
-    std::array<std::byte, PoolSize> m_bufferBlocks;
-    std::pmr::monotonic_buffer_resource m_buffer_src{ m_bufferBlocks.data(), PoolSize };
-    std::pmr::set<AllocationInfo> m_allocations{ &m_buffer_src };
+
+    StackContainer<std::pmr::set<AllocationInfo*>, 4u * 1024u * 1024> m_allocations;
+    mutable std::unique_ptr<IMutex> m_allocationsMtx;
+
+    StackContainer<std::pmr::deque<AllocationInfo*>, 4u * 1024u * 1024> m_toBeDecodedList;
+    mutable std::unique_ptr<IMutex> m_toBeDecodedListMtx;
+
+    StackContainer<std::pmr::set<AllocationInfo*>, 4u * 1024u * 1024> m_unusedTrace;
+    mutable std::unique_ptr<IMutex> m_unusedTraceMtx;
+
+    StackContainer<std::pmr::set<boost::stacktrace::stacktrace*>, 4u * 1024u * 1024> m_usedStacks;
+    mutable std::unique_ptr<IMutex> m_usedStacksMtx;
+
+    StackContainer<std::pmr::set<boost::stacktrace::stacktrace*>, 4u * 1024u * 1024> m_unusedStacks;
+    mutable std::unique_ptr<IMutex> m_unusedStacksMtx;
+
 };
 }

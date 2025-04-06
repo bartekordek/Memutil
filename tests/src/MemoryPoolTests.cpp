@@ -1,11 +1,13 @@
 #include "MemoryPoolTests.hpp"
 #include <MemUtil/Memutil.hpp>
+#include <MemUtil/Import_tracy.hpp>
 #include <MemUtil/STL_Imports/STD_chrono.hpp>
 #include <MemUtil/STL_Imports/STD_random.hpp>
 #include <MemUtil/STL_Imports/STD_vector.hpp>
 
 void* operator new( std::size_t size )
 {
+    ZoneScoped;
     void* result = std::malloc( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
@@ -13,6 +15,7 @@ void* operator new( std::size_t size )
 
 void* operator new[]( std::size_t size )
 {
+    ZoneScoped;
     void* result = std::malloc( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
@@ -20,24 +23,28 @@ void* operator new[]( std::size_t size )
 
 void operator delete( void* ptr ) noexcept
 {
+    ZoneScoped;
     MU::Memutil::getInstance().logFree( ptr );
     std::free( ptr );
 }
 
 void operator delete( void* ptr, std::size_t /*size*/ ) noexcept
 {
+    ZoneScoped;
     MU::Memutil::getInstance().logFree( ptr );
     std::free( ptr );
 }
 
 void operator delete[]( void* ptr ) noexcept
 {
+    ZoneScoped;
     MU::Memutil::getInstance().logFree( ptr );
     std::free( ptr );
 }
 
 void operator delete[]( void* ptr, std::size_t /*size*/ ) noexcept
 {
+    ZoneScoped;
     MU::Memutil::getInstance().logFree( ptr );
     std::free( ptr );
 }
@@ -106,7 +113,8 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 
 TEST_F( MemoryPoolTests, SpeedBenchmark )
 {
-    const std::size_t testSampleCount{ 8000000 };
+    ZoneScoped;
+    const std::size_t testSampleCount{ 800000 };
     const std::size_t maxAllocationBlock{ 16384 };
 
     std::vector<std::uint64_t> samples;
@@ -123,6 +131,7 @@ TEST_F( MemoryPoolTests, SpeedBenchmark )
         auto start = std::chrono::steady_clock::now();
         for( std::size_t i = 0; i < testSampleCount; ++i )
         {
+            ZoneScoped;
             std::byte* allocatedMemory = new std::byte[samples[i]];
             delete[] allocatedMemory;
         }
@@ -131,12 +140,20 @@ TEST_F( MemoryPoolTests, SpeedBenchmark )
         return static_cast<float>( milliseconds );
     };
 
-    const float without = runAllocations();
+    float without{ 0.f };
+    {
+        ZoneNamedN( Memutil_registerStack, "withoutTrack", true );
+        without = runAllocations();
+    }
 
     MU::Memutil& instance = MU::Memutil::getInstance();
 
     instance.toggleTracking( true );
-    const float with = runAllocations();
+    float with{ 0.f };
+    {
+        ZoneNamedN( Memutil_registerStack, "withTrack", true );
+        with = runAllocations();
+    }
     instance.toggleTracking( false );
 
     printf( "%18s %4.0f ms\n", "Without tracking: ", without );

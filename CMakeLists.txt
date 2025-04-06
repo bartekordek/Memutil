@@ -54,6 +54,9 @@ add_subdirectory(${MU_DEPS_PATH}/boost/core)
 add_subdirectory(${MU_DEPS_PATH}/boost/describe)
 add_subdirectory(${MU_DEPS_PATH}/boost/mp11)
 add_subdirectory(${MU_DEPS_PATH}/boost/predef)
+
+set( BOOST_STACKTRACE_ENABLE_BASIC OFF CACHE BOOL "" FORCE )
+set( BOOST_STACKTRACE_ENABLE_WINDBG ON CACHE BOOL "" FORCE )
 add_subdirectory(${MU_DEPS_PATH}/boost/stacktrace)
 add_subdirectory(${MU_DEPS_PATH}/boost/static_assert)
 add_subdirectory(${MU_DEPS_PATH}/boost/throw_exception)
@@ -61,6 +64,7 @@ add_subdirectory(${MU_DEPS_PATH}/boost/winapi)
 
 set( gtest_force_shared_crt ON CACHE BOOL "" FORCE )
 add_subdirectory(${MU_DEPS_PATH}/googletest)
+add_subdirectory(${MU_DEPS_PATH}/tracy)
 
 add_subdirectory(Memutil)
 add_subdirectory(tests)
