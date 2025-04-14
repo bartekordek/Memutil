@@ -111,6 +111,44 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
     delete[] charOutput;
 }
 
+TEST_F( MemoryPoolTests, SortingValues )
+{
+    ZoneScoped;
+    const std::size_t testSampleCount{ 256 };
+    const std::size_t maxAllocationBlock{ 128 };
+
+    std::vector<std::uint64_t> samples;
+    samples.resize( testSampleCount );
+
+    for( std::size_t i = 0; i < testSampleCount; ++i )
+    {
+        const std::uint64_t currentSize = getRandom( 2, maxAllocationBlock );
+        samples[i] = currentSize;
+    }
+
+    std::vector<void*> allocations;
+    allocations.resize( testSampleCount );
+
+    MU::Memutil& instance = MU::Memutil::getInstance();
+    instance.toggleTracking( true );
+    for( std::size_t i = 0; i < testSampleCount; ++i )
+    {
+        ZoneScoped;
+        allocations[i] = new std::byte[samples[i]];
+    }
+    instance.toggleTracking( false );
+    instance.waitForAllCallStacksToBeDecoded();
+    instance.dumpActiveAllocationsToOutput();
+    instance.toggleTracking( true );
+    for( std::size_t i = 0; i < testSampleCount; ++i )
+    {
+        ZoneScoped;
+        delete allocations[i];
+    }
+
+    instance.toggleTracking( false );
+}
+
 TEST_F( MemoryPoolTests, SpeedBenchmark )
 {
     ZoneScoped;

@@ -27,7 +27,7 @@
             "command": "cmake",
             "args": [
                 "--build",
-                "Build",
+                "Build-Linux",
                 "--config",
                 "DEBUG",
                 "-j16",
@@ -50,7 +50,7 @@
         {
             "label": "[LINUX][CMAKE][CREATE][DEBUG]",
             "type": "shell",
-            "command": "cmake -S . -B Build -DCMAKE_BUILD_TYPE=Debug",
+            "command": "cmake -S . -B Build-Linux -DCMAKE_BUILD_TYPE=Debug",
             "group": {
                 "kind": "build",
                 "isDefault": true

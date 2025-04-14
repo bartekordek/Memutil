@@ -8,12 +8,11 @@
             "name": "[LINUX][DEBUG][BUILLD][run_tests][DEBUG]",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Build/tests/tests_bin",
+            "program": "${workspaceFolder}/Build-Linux/tests/tests_bin",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -22,7 +21,6 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "[LINUX][DEBUG][BUILLD][tests]",
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
@@ -32,44 +30,6 @@
             "program": "${workspaceFolder}/Build-Windows/Debug/04_Hello-Triangle.exe",
             "cwd": "${workspaceRoot}/04_Hello-Triangle",
             // "symbolSearchPath": "${workspaceRoot}/runDir",
-            "args": [
-                "-w",
-                "1280",
-                "-h",
-                "800"
-            ],
-            "console": "integratedTerminal",
-            "logging": {
-                "moduleLoad": false,
-                "trace": true,
-            }
-        },
-        {
-            "name": "[WINDOWS][DEBUG][RUN][04_Hello-Triangle_refactor]",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/Build-Windows/Debug/04_Hello-Triangle_refactor.exe",
-            "cwd": "${workspaceRoot}/04_Hello-Triangle_refactor",
-            "symbolSearchPath": "${workspaceRoot}/runDir",
-            "args": [
-                "-w",
-                "1280",
-                "-h",
-                "800"
-            ],
-            "console": "integratedTerminal",
-            "logging": {
-                "moduleLoad": false,
-                "trace": true,
-            }
-        },
-        {
-            "name": "[WINDOWS][DEBUG][RUN][05_Shaders]",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/Build-Windows/Debug/05_Shaders.exe",
-            "cwd": "${workspaceRoot}/05_Shaders",
-            "symbolSearchPath": "${workspaceRoot}/runDir",
             "args": [
                 "-w",
                 "1280",

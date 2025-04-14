@@ -58,7 +58,7 @@ if (MSVC)
     list(APPEND DEPENDENCIES PUBLIC boost_winapi)
     list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_windbg_cached)
 else()
-    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_basic)
+    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace)
 endif()
 
 message( "DEPENDENCIES: ${DEPENDENCIES}" )

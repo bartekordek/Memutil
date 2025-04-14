@@ -4,13 +4,14 @@
 #include <MemUtil/Generic/StringStatic.hpp>
 #include <MemUtil/Import_boost_stacktrace.hpp>
 #include <MemUtil/Generic/StackContainer.hpp>
+#include <MemUtil/Stack.hpp>
 #include <MemUtil/STL_Imports/STD_array.hpp>
 #include <MemUtil/STL_Imports/STD_thread.hpp>
 #include <MemUtil/STL_Imports/STD_memory_resource.hpp>
 #include <MemUtil/STL_Imports/STD_set.hpp>
 #include <MemUtil/STL_Imports/STD_memory.hpp>
 #include <MemUtil/STL_Imports/STD_deque.hpp>
-#include <MemUtil/STL_Imports/STD_map.hpp>
+#include <MemUtil/STL_Imports/STD_unordered_map.hpp>
 
 
 namespace MU
@@ -29,29 +30,6 @@ constexpr std::uint8_t G_maxStackSize = 16u;
 
 using CStackString = StringStatic<512>;
 
-
-class AllocationInfo final
-{
-public:
-    std::uint64_t Size{ 0u };
-    void* Ptr{ nullptr };
-    CStackString StackString;
-    boost::stacktrace::stacktrace Trace;
-    EStackType Type{ EStackType::None };
-
-    AllocationInfo();
-    AllocationInfo( AllocationInfo&& arg ) noexcept;
-    AllocationInfo& operator=( AllocationInfo&& arg ) noexcept;
-
-    AllocationInfo( const AllocationInfo& ) = delete;
-    AllocationInfo& operator=( const AllocationInfo& ) = delete;
-
-    ~AllocationInfo();
-
-protected:
-private:
-
-};
 
 struct StackInfo;
 
@@ -103,38 +81,23 @@ public:
     MULib_API bool dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const;
     MULib_API bool waitForAllCallStacksToBeDecoded() const;
     MULib_API std::int32_t getActiveAllocations() const;
-    MULib_API void releaseCallstack( boost::stacktrace::stacktrace* inCallstack );
 
 private:
     MULib_API Memutil();
     MULib_API ~Memutil();
     void registerStack( void* ptr, std::uint64_t inSize );
     void unregisterStack( void* ptr, std::uint64_t inSize );
-    void decode( AllocationInfo* stackInfo );
     bool m_initialized{ false };
     std::thread m_mainLoopThread;
     bool m_runMainLoop{ false };
     void mainLoop();
-    boost::stacktrace::stacktrace* createStackTrace();
-    AllocationInfo* fetchAllocationInfo();
-    void convertBoostToAllocationInfo( AllocationInfo* inOut );
 
     bool m_enableTracking{ false };
 
-    StackContainer<std::pmr::set<AllocationInfo*>, 4u * 1024u * 1024> m_allocations;
-    mutable std::unique_ptr<IMutex> m_allocationsMtx;
+    StackContainer<std::pmr::deque<CStack>, 4u * 1024u * 1024> m_toBeDecoded;
+    mutable std::unique_ptr<IMutex> m_toBeDecodedMtx;
 
-    StackContainer<std::pmr::deque<AllocationInfo*>, 4u * 1024u * 1024> m_toBeDecodedList;
-    mutable std::unique_ptr<IMutex> m_toBeDecodedListMtx;
-
-    StackContainer<std::pmr::set<AllocationInfo*>, 4u * 1024u * 1024> m_unusedTrace;
-    mutable std::unique_ptr<IMutex> m_unusedTraceMtx;
-
-    StackContainer<std::pmr::set<boost::stacktrace::stacktrace*>, 4u * 1024u * 1024> m_usedStacks;
-    mutable std::unique_ptr<IMutex> m_usedStacksMtx;
-
-    StackContainer<std::pmr::set<boost::stacktrace::stacktrace*>, 4u * 1024u * 1024> m_unusedStacks;
-    mutable std::unique_ptr<IMutex> m_unusedStacksMtx;
-
+    StackContainer<std::pmr::unordered_map<void*,CStack>, 4u * 1024u * 1024> m_allocated;
+    mutable std::unique_ptr<IMutex> m_allocatedMtx;
 };
 }

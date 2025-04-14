@@ -32,7 +32,7 @@ public:
     }
 
     StringStatic( StringStatic&& arg ):
-        m_size( arg.size )
+        m_size( arg.m_size )
     {
         std::strcpy( m_value, arg.m_value );
         arg.m_size = 0u;
@@ -62,7 +62,7 @@ public:
 
     StringStatic& operator=( const char* arg )
     {
-        m_size = std::strlen( arg );
+        m_size = static_cast<decltype( m_size )>( std::strlen( arg ) );
         BOOST_ASSERT_MSG( m_size < Capacity, "TOO SMALL BUFFER!" );
 
         std::strcpy( m_value, arg );

@@ -4,7 +4,9 @@
 #include <MemUtil/STL_Imports/STD_cstdio.hpp>
 #include <MemUtil/Generic/ScopeExit.hpp>
 #include <MemUtil/Generic/IMutex.hpp>
+#include <MemUtil/Stack.hpp>
 #include <MemUtil/Import_tracy.hpp>
+#include <MemUtil/STL_Imports/STD_algorithm.hpp>
 
 namespace MU
 {
@@ -12,52 +14,6 @@ namespace MU
 thread_local bool g_blockCurrentThread{ false };
 thread_local bool g_isDecodingThread{ false };
 bool g_isDecoding{ false };
-
-
-AllocationInfo::AllocationInfo()
-{
-}
-
-AllocationInfo::AllocationInfo( AllocationInfo&& arg ) noexcept:
-    Size( arg.Size ),
-    Ptr( arg.Ptr ),
-    StackString( arg.StackString ),
-    Trace( arg.Trace ),
-    Type( arg.Type )
-{
-    arg.Size = 0u;
-    //arg.Trace = nullptr;
-    arg.Ptr = nullptr;
-    arg.Type = EStackType::None;
-}
-
-AllocationInfo& AllocationInfo::operator=( AllocationInfo&& arg ) noexcept
-{
-    if( this != &arg )
-    {
-        Type = arg.Type;
-
-        //Trace = arg.Trace;
-        //arg.Trace = nullptr;
-
-        Ptr = arg.Ptr;
-        arg.Ptr = nullptr;
-
-        StackString = arg.StackString;
-
-        Size = arg.Size;
-        arg.Size = 0u;
-
-        arg.Type = EStackType::None;
-    }
-    return *this;
-}
-
-AllocationInfo::~AllocationInfo()
-{
-    //Memutil::getInstance().releaseCallstack( Trace );
-    //Trace = nullptr;
-}
 
 Memutil& Memutil::getInstance()
 {
@@ -90,19 +46,8 @@ void Memutil::init()
         return;
     }
 
-    m_allocationsMtx.reset( IMutex::createDefaultMtx() );
-    m_toBeDecodedListMtx.reset( IMutex::createDefaultMtx() );
-    m_usedStacksMtx.reset( IMutex::createDefaultMtx() );
-    m_unusedStacksMtx.reset( IMutex::createDefaultMtx() );
-
-    g_blockCurrentThread = true;
-    for( std::size_t i = 0u; i < 800000u; ++i )
-    {
-        m_unusedStacks->insert( new boost::stacktrace::stacktrace() );
-        m_unusedTrace->insert( new AllocationInfo() );
-    }
-    m_unusedTraceMtx.reset( IMutex::createDefaultMtx() );
-    g_blockCurrentThread = false;
+    m_toBeDecodedMtx.reset( IMutex::createDefaultMtx() );
+    m_allocatedMtx.reset( IMutex::createDefaultMtx() );
 
     m_runMainLoop = true;
     m_mainLoopThread = std::thread( &Memutil::mainLoop, this );
@@ -145,104 +90,36 @@ void Memutil::logFree( void* inPtr )
 void Memutil::registerStack( void* ptr, std::uint64_t inSize )
 {
     ZoneScoped;
-    AllocationInfo* si = fetchAllocationInfo();
-    si->Ptr = ptr;
-    si->Type = EStackType::Allocation;
-    si->Size = inSize;
-    g_blockCurrentThread = true;
-    //si->Trace = createStackTrace();
-    si->Trace = boost::stacktrace::stacktrace();
-    g_blockCurrentThread = false;
+
+    CStack stack;
+    stack.fetch();
+    stack.Size = inSize;
+    stack.Data = ptr;
 
     ZoneNamedN( Memutil_registerStack, "Memutil_registerStack_deque_emplace", true );
-    MutexGuard locker( *m_toBeDecodedListMtx );
-    m_toBeDecodedList->push_back( si );
+    MutexGuard locker( *m_toBeDecodedMtx );
+    m_toBeDecoded->push_back( stack );
 }
 
-AllocationInfo* Memutil::fetchAllocationInfo()
+void Memutil::unregisterStack( void* ptr, std::uint64_t /*inSize*/ )
 {
-    ZoneScoped;
-    AllocationInfo* result{ nullptr };
-
-    {
-        ZoneNamedN( Memutil_registerStack, "Memutil_fetchAllocationInfo_fetch", true );
-        // Find already created.
-        MutexGuard locker( *m_toBeDecodedListMtx );
-        if( m_unusedTrace->empty() == false )
-        {
-            result = *m_unusedTrace->begin();
-            m_unusedTrace->erase( m_unusedTrace->begin() );
-            return result;
-        }
-    }
-    {
-        ZoneNamedN( Memutil_registerStack, "Memutil_fetchAllocationInfo_create", true );
-        // Create new one.
-        g_blockCurrentThread = true;
-        result = new AllocationInfo();
-        g_blockCurrentThread = false;
-        return result;
-    }
-}
-
-void Memutil::unregisterStack( void* ptr, std::uint64_t inSize )
-{
-    ZoneScoped;
-    AllocationInfo* si = fetchAllocationInfo();
-    si->Ptr = ptr;
-    si->Type = EStackType::Deallocation;
-    si->Size = inSize;
-
     ZoneNamedN( Memutil_registerStack, "Memutil_unregisterStack_deque_emplace", true );
-    MutexGuard locker( *m_toBeDecodedListMtx );
-    m_toBeDecodedList->push_back( si );
-}
-
-boost::stacktrace::stacktrace* Memutil::createStackTrace()
-{
-    ZoneScoped;
-    boost::stacktrace::stacktrace* result{ nullptr };
-
-    {
-        ZoneNamedN( Memutil_registerStack, "Memutil_createStackTrace_fetch", true );
-        // Try to get from unused.
-        MutexGuard guard( *m_unusedStacksMtx );
-        if( m_unusedStacks->empty() == false )
-        {
-            result = *m_unusedStacks->begin();
-            m_unusedStacks->erase( m_unusedStacks->begin() );
-            g_blockCurrentThread = true;
-            *result = boost::stacktrace::stacktrace();
-            g_blockCurrentThread = false;
-            return result;
-        }
-    }
-
-    {
-        ZoneNamedN( Memutil_registerStack, "Memutil_createStackTrace_new", true );
-        // Create new.
-        g_blockCurrentThread = true;
-        result = new boost::stacktrace::stacktrace();
-        g_blockCurrentThread = false;
-
-        MutexGuard guard( *m_usedStacksMtx );
-        m_usedStacks->insert( result );
-        return result;
-    }
+    MutexGuard locker( *m_allocatedMtx );
+    m_allocated->erase( ptr );
 }
 
 void Memutil::mainLoop()
 {
-    AllocationInfo* currentTrace{ nullptr };
+    CStack currentTrace;
     while( m_runMainLoop )
     {
         {
-            MutexGuard locker( *m_toBeDecodedListMtx );
-            if( m_toBeDecodedList->empty() == false )
+            MutexGuard locker( *m_toBeDecodedMtx );
+            if( m_toBeDecoded->empty() == false )
             {
                 g_blockCurrentThread = true;
-                currentTrace = m_toBeDecodedList->back();
-                m_toBeDecodedList->pop_back();
+                currentTrace = m_toBeDecoded->front();
+                m_toBeDecoded->pop_front();
                 g_blockCurrentThread = false;
                 g_isDecoding = true;
             }
@@ -253,119 +130,66 @@ void Memutil::mainLoop()
         }
         if( g_isDecoding )
         {
-            decode( currentTrace );
+            currentTrace.decode();
+
+            MutexGuard locker( *m_allocatedMtx );
+            m_allocated->insert( { currentTrace.Data, currentTrace } );
             g_isDecoding = false;
         }
     }
 }
 
-void Memutil::releaseCallstack( boost::stacktrace::stacktrace* inCallstack )
-{
-    if( inCallstack == nullptr )
-    {
-        return;
-    }
-
-    {
-        MutexGuard guard( *m_usedStacksMtx );
-        const auto it = m_usedStacks->find( inCallstack );
-        m_usedStacks->erase( it );
-    }
-    {
-        MutexGuard guard( *m_unusedStacksMtx );
-        m_unusedStacks->insert( inCallstack );
-    }
-}
-
-void Memutil::decode( AllocationInfo* stackInfo )
-{
-    g_isDecodingThread = true;
-
-    if( stackInfo->Type == EStackType::Allocation )
-    {
-        convertBoostToAllocationInfo( stackInfo );
-
-        MutexGuard locker( *m_allocationsMtx );
-        m_allocations->insert( stackInfo );
-    }
-    else if( stackInfo->Type == EStackType::Deallocation )
-    {
-        MutexGuard locker( *m_allocationsMtx );
-
-        const auto it = std::find_if( m_allocations->begin(), m_allocations->end(),
-                                [&stackInfo]( AllocationInfo* curr )
-                                {
-                                    return curr->Ptr == stackInfo->Ptr;
-                                } );
-        if( it != m_allocations->end() )
-        {
-            m_allocations->erase( it );
-        }
-    }
-    g_isDecodingThread = false;
-}
-
-void Memutil::convertBoostToAllocationInfo( AllocationInfo* inOut )
-{
-    inOut->StackString.clear();
-
-    const auto& stVec = inOut->Trace.as_vector();
-    size_t stackTraceSize = stVec.size();
-    std::size_t outputStackSize{ 0u };
-    for( size_t i = 0; i < stackTraceSize; ++i )
-    {
-        const boost::stacktrace::frame& currentTraceLine = stVec[i];
-        if( currentTraceLine.empty() == true )
-        {
-            continue;
-        }
-
-        if( outputStackSize >= G_maxStackSize )
-        {
-            inOut->Size = outputStackSize;
-            return;
-        }
-
-        std::string sourceFile = currentTraceLine.source_file();
-        if( sourceFile.empty() )
-        {
-            sourceFile = "unkown";
-        }
-
-        if( ( sourceFile.find( "stacktrace.hpp" ) != std::string::npos ) || ( sourceFile.find( "Memutil.cpp" ) != std::string::npos ) )
-        {
-            continue;
-        }
-
-        inOut->StackString.appendFrom( "%s:%d\n", sourceFile.c_str(), (int)currentTraceLine.source_line() );
-
-
-        ++outputStackSize;
-        if( outputStackSize == inOut->Size )
-        {
-            break;
-        }
-    }
-    return;
-}
-
 void Memutil::dumpActiveAllocationsToOutput() const
 {
-    MutexGuard locker( *m_allocationsMtx );
-//    for( AllocationInfo* stackInfo : *m_allocations )
+    MutexGuard locker( *m_allocatedMtx );
+
+    std::vector<decltype( CStack::Size )> sizes;
+    for( const auto& [ptr, stack] : *m_allocated )
+    {
+        sizes.push_back( stack.Size );
+    }
+
+    std::sort( sizes.begin(), sizes.end(), std::greater<>() );
+
+    std::vector<decltype( CStack::Size )> sizesUnique;
+
+    struct SameStackGroup
+    {
+        std::array<SLineInfo, G_MaxStackSize>
+    };
+
+    struct SameSizeGroup
+    {
+        std::vector<
+    };
+
+    std::unordered_map < decltype( CStack::Size ), >
+
+    decltype( CStack::Size ) prev = 0;
+    for( const decltype( CStack::Size ) value : sizes )
+    {
+        if( value == prev )
+        {
+            continue;
+        }
+
+        sizesUnique.push_back( value );
+        prev = value;
+    }
+
+//    for( const auto& [ptr, stack] : *m_allocated )
 //    {
-//        const std::uint64_t sum = stackInfo->Size * stackInfo->Ptrs.size();
 //#if defined( _MSC_VER )
-//        printf( "Stack info:\nSize: %lldB ( %lldB x %zd )\n", sum, stackInfo->Size, stackInfo->Ptrs.size() );
+//        printf( "Stack info:\nSize: %lld B\n", stack.Size );
 //#else   // #if defined(_MSC_VER)
-//        printf( "Stack info:\nSize: %ldB ( %ldB x %ld )\n", sum, stackInfo->Size, stackInfo->Ptrs.size() );
+//        printf( "Stack info:\nSize: %lld B\n", stack.Size );
 //#endif  // #if defined(_MSC_VER)
 //
-//        for( const auto& line : stackInfo->StackLines )
+//        for( const auto& line : stack.getStackLines() )
 //        {
-//            if( line.empty() == false )
+//            if( line.Value.empty() == false )
 //            {
-//                printf( "%s\n", line.c_str() );
+//                printf( "%s : %d\n", line.Value.c_str(), line.Number );
 //            }
 //        }
 //    }
@@ -373,62 +197,64 @@ void Memutil::dumpActiveAllocationsToOutput() const
 
 bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const
 {
+    return true;
+
     std::memset( outBuffer, 0, inBufferCapacity );
 
     std::int32_t firstEmptyChar{ 0u };
     std::int32_t bufferLeft{ static_cast<std::int32_t>( inBufferCapacity ) };
     std::int32_t currentWordSize{ 0u };
 
-    MutexGuard locker( *m_allocationsMtx );
-//    for( AllocationInfo* stackInfo : (*m_allocations) )
-//    {
-//        const std::uint64_t sum = stackInfo->Size * stackInfo->Ptrs.size();
-//#if defined( _MSC_VER )
-//        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %zd B ( %lld B x %zd )\n", sum,
-//                                    stackInfo->Size, stackInfo->Ptrs.size() );
-//#else   // #if defined( _MSC_VER )
-//        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %ld B ( %ld B x %ld )\n", sum,
-//                                    stackInfo->Size, stackInfo->Ptrs.size() );
-//#endif  // #if defined( _MSC_VER )
-//
-//        if( currentWordSize < 1 )
-//        {
-//            return false;
-//        }
-//
-//        firstEmptyChar += currentWordSize;
-//        bufferLeft -= currentWordSize;
-//        outBuffer += currentWordSize;
-//
-//        for( const auto& line : stackInfo->StackLines )
-//        {
-//            if( line.empty() )
-//            {
-//                continue;
-//            }
-//
-//            currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "%s\n", line.c_str() );
-//
-//            if( currentWordSize < 1 )
-//            {
-//                return false;
-//            }
-//
-//            firstEmptyChar += currentWordSize;
-//            outBuffer += currentWordSize;
-//            bufferLeft -= currentWordSize;
-//        }
-//    }
+    MutexGuard locker( *m_allocatedMtx );
+    for( const auto& [ptr, stack] : *m_allocated )
+    {
+#if defined( _MSC_VER )
+        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %zd B\n", stack.Size );
+#else   // #if defined( _MSC_VER )
+        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %ld B\n", stack.Size );
+#endif  // #if defined( _MSC_VER )
+
+        if( currentWordSize < 1 )
+        {
+            return false;
+        }
+
+        firstEmptyChar += currentWordSize;
+        bufferLeft -= currentWordSize;
+        outBuffer += currentWordSize;
+
+        std::size_t num{ 0u };
+        for( const auto& line : stack.getStackLines() )
+        {
+            if( line.Value.empty() )
+            {
+                ++num;
+                continue;
+            }
+
+            currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "%s:%d\n", line.Value.c_str(), line.Number );
+
+            if( currentWordSize < 1 )
+            {
+                return false;
+            }
+
+            firstEmptyChar += currentWordSize;
+            outBuffer += currentWordSize;
+            bufferLeft -= currentWordSize;
+            ++num;
+        }
+    }
     return true;
 }
 
 bool Memutil::waitForAllCallStacksToBeDecoded() const
 {
-    bool dequeIsEmpty{ false };
-    while( ( dequeIsEmpty == false ) || ( g_isDecodingThread == true ) || ( g_isDecoding == true ) )
+    bool decodedIsEmpty{ false };
+    while( ( decodedIsEmpty == false ) || ( g_isDecodingThread == true ) || ( g_isDecoding == true ) )
     {
-        MutexGuard locker( *m_toBeDecodedListMtx );
-        dequeIsEmpty = m_toBeDecodedList->empty();
+        MutexGuard locker( *m_toBeDecodedMtx );
+        decodedIsEmpty = m_toBeDecoded->empty();
     }
 
     return true;
@@ -436,8 +262,8 @@ bool Memutil::waitForAllCallStacksToBeDecoded() const
 
 std::int32_t Memutil::getActiveAllocations() const
 {
-    MutexGuard locker( *m_allocationsMtx );
-    return static_cast<std::int32_t>( m_allocations->size() );
+    MutexGuard locker( *m_allocatedMtx );
+    return static_cast<std::int32_t>( m_allocated->size() );
 }
 
 Memutil::~Memutil()
@@ -448,6 +274,5 @@ Memutil::~Memutil()
         m_mainLoopThread.join();
     }
 }
-
 
 }  // namespace MU
