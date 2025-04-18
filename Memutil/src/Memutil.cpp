@@ -7,6 +7,7 @@
 #include <MemUtil/Stack.hpp>
 #include <MemUtil/Import_tracy.hpp>
 #include <MemUtil/STL_Imports/STD_algorithm.hpp>
+#include <MemUtil/STL_Imports/STD_cmath.hpp>
 
 namespace MU
 {
@@ -25,38 +26,29 @@ Memutil::Memutil()
 {
 }
 
-void Memutil::toggleTracking( bool inToggleTracking )
-{
-    ZoneScoped;
-    if( inToggleTracking == true )
-    {
-        if( m_runMainLoop == false )
-        {
-            init();
-        }
-    }
-
-    m_enableTracking = inToggleTracking;
-}
 void Memutil::init()
 {
-    ZoneScoped;
+    MU_MEASURE_SCOPE;
     if( m_initialized )
     {
         return;
     }
 
-    m_toBeDecodedMtx.reset( IMutex::createDefaultMtx() );
-    m_allocatedMtx.reset( IMutex::createDefaultMtx() );
+    m_toBeDecoded = new std::deque<CStack>();
 
     m_runMainLoop = true;
-    m_mainLoopThread = std::thread( &Memutil::mainLoop, this );
+
+    for( std::size_t i = 0u; i < decodeWorkersCount; ++i )
+    {
+        m_decodeThreads[i] = new std::thread( &Memutil::mainLoop, this );
+    }
+
     m_initialized = true;
 }
 
 void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize )
 {
-    ZoneScoped;
+    MU_MEASURE_SCOPE;
     if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecodingThread == true ) )
     {
         return;
@@ -67,7 +59,7 @@ void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize )
 
 void Memutil::logAlloc( void* inPtr, std::uint64_t inSize )
 {
-    ZoneScoped;
+    MU_MEASURE_SCOPE;
     if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecodingThread == true ) )
     {
         return;
@@ -78,7 +70,7 @@ void Memutil::logAlloc( void* inPtr, std::uint64_t inSize )
 
 void Memutil::logFree( void* inPtr )
 {
-    ZoneScoped;
+    MU_MEASURE_SCOPE;
     if( ( g_blockCurrentThread == true ) || ( m_enableTracking == false ) || ( g_isDecodingThread == true ) )
     {
         return;
@@ -89,37 +81,72 @@ void Memutil::logFree( void* inPtr )
 
 void Memutil::registerStack( void* ptr, std::uint64_t inSize )
 {
-    ZoneScoped;
+    MU_MEASURE_SCOPE;
 
     CStack stack;
+
+    const bool oldTrackingValue2 = m_enableTracking;
+    m_enableTracking = false;
     stack.fetch();
+    m_enableTracking = oldTrackingValue2;
     stack.Size = inSize;
     stack.Data = ptr;
+    stack.Type = EStackType::Alloc;
 
-    ZoneNamedN( Memutil_registerStack, "Memutil_registerStack_deque_emplace", true );
-    MutexGuard locker( *m_toBeDecodedMtx );
-    m_toBeDecoded->push_back( stack );
+    MU_MEASURE_SUBSCOPE( Memutil_registerStack_l, "lock", true );
+    MutexGuard locker( &m_toBeDecodedMtx );
+
+    MU_MEASURE_SUBSCOPE( Memutil_registerStack_p, "push_back", true );
+
+    const bool oldTrackingValue = m_enableTracking;
+    m_enableTracking = false;
+    m_toBeDecoded->emplace_back( stack );
+    m_enableTracking = oldTrackingValue;
 }
 
 void Memutil::unregisterStack( void* ptr, std::uint64_t /*inSize*/ )
 {
-    ZoneNamedN( Memutil_registerStack, "Memutil_unregisterStack_deque_emplace", true );
-    MutexGuard locker( *m_allocatedMtx );
-    m_allocated->erase( ptr );
+    MU_MEASURE_SCOPE;
+
+    CStack stack;
+    stack.Data = ptr;
+    stack.Type = EStackType::Dealloc;
+
+    MutexGuard locker( &m_allocatedMtx );
+    MU_MEASURE_SUBSCOPE( Memutil_registerStack, "lock", true );
+    const bool oldTrackingValue = m_enableTracking;
+    m_enableTracking = false;
+    m_toBeDecoded->emplace_back( stack );
+    m_enableTracking = oldTrackingValue;
 }
 
 void Memutil::mainLoop()
 {
+    MU_MEASURE_SCOPE;
+
+    static std::atomic<std::uint8_t> threadumber{ 0u };
+    constexpr std::size_t bufferSize{ 64 };
+    char threadName[bufferSize];
+    snprintf( threadName, bufferSize, "DecodeLoop %d", threadumber.load() );
+    ++threadumber;
+
+    MU_SET_THREAD_NAME( threadName );
     CStack currentTrace;
     while( m_runMainLoop )
     {
+        MU_MEASURE_SUBSCOPE( MemutilmainLoop_00, "fetch", true );
         {
-            MutexGuard locker( *m_toBeDecodedMtx );
+            MutexGuard locker( &m_toBeDecodedMtx );
+            MU_MEASURE_SUBSCOPE( MemutilmainLoop_01, "lock", true );
             if( m_toBeDecoded->empty() == false )
             {
-                g_blockCurrentThread = true;
                 currentTrace = m_toBeDecoded->front();
+
+                const bool oldTrackingValue = m_enableTracking;
+                m_enableTracking = false;
                 m_toBeDecoded->pop_front();
+                m_enableTracking = oldTrackingValue;
+
                 g_blockCurrentThread = false;
                 g_isDecoding = true;
             }
@@ -130,88 +157,178 @@ void Memutil::mainLoop()
         }
         if( g_isDecoding )
         {
-            currentTrace.decode();
+            if( currentTrace.Type == EStackType::Alloc )
+            {
+                MU_MEASURE_SUBSCOPE( MemutilmainLoop_01, "decode", true );
+                currentTrace.decode();
+                MutexGuard locker( &m_allocatedMtx );
+                MU_MEASURE_SUBSCOPE( MemutilmainLoop_02, "lock", true );
+                m_allocated->insert( { currentTrace.Data, currentTrace } );
+            }
+            else
+            {
+                {
+                    MutexGuard locker( &m_allocatedMtx );
+                    const auto it = m_allocated->find( currentTrace.Data );
+                    if( it != m_allocated->end() )
+                    {
+                        m_allocated->erase( currentTrace.Data );
+                        continue;
+                    }
+                }
+                {
+                    MutexGuard locker( &m_toBeDecodedMtx );
+                    m_toBeDecoded->push_back( currentTrace );
+                }
+            }
 
-            MutexGuard locker( *m_allocatedMtx );
-            m_allocated->insert( { currentTrace.Data, currentTrace } );
             g_isDecoding = false;
         }
     }
+    printf( "Ending loop.\n" );
 }
 
-void Memutil::dumpActiveAllocationsToOutput() const
+void Memutil::dumpActiveAllocationsToOutput()
 {
-    MutexGuard locker( *m_allocatedMtx );
+    MU_MEASURE_SCOPE;
+    MutexGuard locker( &m_allocatedMtx );
 
-    std::vector<decltype( CStack::Size )> sizes;
-    for( const auto& [ptr, stack] : *m_allocated )
-    {
-        sizes.push_back( stack.Size );
-    }
+    const bool lastTrackingStatus = getTrackingStatus();
+    toggleTracking( false );
+    dumpActiveAllocationsToOutput_impl();
+    toggleTracking( lastTrackingStatus );
+}
 
-    std::sort( sizes.begin(), sizes.end(), std::greater<>() );
-
-    std::vector<decltype( CStack::Size )> sizesUnique;
-
+void Memutil::dumpActiveAllocationsToOutput_impl()
+{
+    MU_MEASURE_SCOPE;
     struct SameStackGroup
     {
-        std::array<SLineInfo, G_MaxStackSize>
-    };
+        CStack Stack;
+        std::uint64_t SameCount{ 0u };
 
-    struct SameSizeGroup
-    {
-        std::vector<
-    };
-
-    std::unordered_map < decltype( CStack::Size ), >
-
-    decltype( CStack::Size ) prev = 0;
-    for( const decltype( CStack::Size ) value : sizes )
-    {
-        if( value == prev )
+        std::uint64_t getWholeSize() const
         {
-            continue;
+            return SameCount * Stack.Size;
         }
+    };
 
-        sizesUnique.push_back( value );
-        prev = value;
+    std::vector<SameStackGroup> sortedGroup;
+    for( const auto& [ptr, stack] : *m_allocated )
+    {
+        auto it = std::find_if( sortedGroup.begin(), sortedGroup.end(),
+                                [&stack]( const SameStackGroup& current )
+                                {
+                                    return stack == current.Stack;
+                                } );
+
+        if( it != sortedGroup.end() )
+        {
+            ++it->SameCount;
+        }
+        else
+        {
+            SameStackGroup newGroup;
+            newGroup.Stack = stack;
+            newGroup.SameCount = 1u;
+            sortedGroup.push_back( newGroup );
+        }
     }
 
-//    for( const auto& [ptr, stack] : *m_allocated )
-//    {
-//#if defined( _MSC_VER )
-//        printf( "Stack info:\nSize: %lld B\n", stack.Size );
-//#else   // #if defined(_MSC_VER)
-//        printf( "Stack info:\nSize: %lld B\n", stack.Size );
-//#endif  // #if defined(_MSC_VER)
-//
-//        for( const auto& line : stack.getStackLines() )
-//        {
-//            if( line.Value.empty() == false )
-//            {
-//                printf( "%s : %d\n", line.Value.c_str(), line.Number );
-//            }
-//        }
-//    }
+    std::sort( sortedGroup.begin(), sortedGroup.end(),
+               []( const SameStackGroup& g1, const SameStackGroup& g2 )
+               {
+                   return g1.getWholeSize() > g2.getWholeSize();
+               } );
+
+    for( const SameStackGroup& group : sortedGroup )
+    {
+#if defined( _MSC_VER )
+        printf( "Stack info:\nSize: %lld B (%lld B x %lld)\n", group.getWholeSize(), group.Stack.Size, group.SameCount );
+#else   // #if defined(_MSC_VER)
+        printf( "Stack info:\nSize: %ld B (%ld B x %ld)\n", group.getWholeSize(), group.Stack.Size, group.SameCount );
+#endif  // #if defined(_MSC_VER)
+
+        for( const auto& line : group.Stack.getStackLines() )
+        {
+            if( line.Value.empty() == false )
+            {
+                printf( "%s : %d\n", line.Value.c_str(), line.Number );
+            }
+        }
+    }
 }
 
-bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity ) const
+bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity )
 {
-    return true;
+    MU_MEASURE_SCOPE;
+    MutexGuard locker( &m_allocatedMtx );
 
+    const bool lastTrackingStatus = getTrackingStatus();
+    toggleTracking( false );
+    const bool result = dumpActiveAllocationsToBuffer_impl( outBuffer, inBufferCapacity );
+    toggleTracking( lastTrackingStatus );
+    return result;
+}
+
+bool Memutil::dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t inBufferCapacity )
+{
+    MU_MEASURE_SCOPE;
     std::memset( outBuffer, 0, inBufferCapacity );
 
     std::int32_t firstEmptyChar{ 0u };
     std::int32_t bufferLeft{ static_cast<std::int32_t>( inBufferCapacity ) };
     std::int32_t currentWordSize{ 0u };
 
-    MutexGuard locker( *m_allocatedMtx );
+    const bool lastTrackingStatus = getTrackingStatus();
+
+    struct SameStackGroup
+    {
+        CStack Stack;
+        std::uint64_t SameCount{ 0u };
+
+        std::uint64_t getWholeSize() const
+        {
+            return SameCount * Stack.Size;
+        }
+    };
+
+    std::vector<SameStackGroup> sortedGroup;
     for( const auto& [ptr, stack] : *m_allocated )
     {
+        auto it = std::find_if( sortedGroup.begin(), sortedGroup.end(),
+                                [&stack]( const SameStackGroup& current )
+                                {
+                                    return stack == current.Stack;
+                                } );
+
+        if( it != sortedGroup.end() )
+        {
+            ++it->SameCount;
+        }
+        else
+        {
+            SameStackGroup newGroup;
+            newGroup.Stack = stack;
+            newGroup.SameCount = 1u;
+            sortedGroup.push_back( newGroup );
+        }
+    }
+
+    std::sort( sortedGroup.begin(), sortedGroup.end(),
+               []( const SameStackGroup& g1, const SameStackGroup& g2 )
+               {
+                   return g1.getWholeSize() > g2.getWholeSize();
+               } );
+
+    for( const SameStackGroup& group : sortedGroup )
+    {
 #if defined( _MSC_VER )
-        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %zd B\n", stack.Size );
+        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %lld B (%lld B x %lld)\n",
+                                    group.getWholeSize(), group.Stack.Size, group.SameCount );
 #else   // #if defined( _MSC_VER )
-        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %ld B\n", stack.Size );
+        currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "Stack info:\nSize: %ld B (%ld B x %ld)\n",
+                                    group.getWholeSize(), group.Stack.Size, group.SameCount );
 #endif  // #if defined( _MSC_VER )
 
         if( currentWordSize < 1 )
@@ -224,7 +341,7 @@ bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBuff
         outBuffer += currentWordSize;
 
         std::size_t num{ 0u };
-        for( const auto& line : stack.getStackLines() )
+        for( const auto& line : group.Stack.getStackLines() )
         {
             if( line.Value.empty() )
             {
@@ -245,15 +362,44 @@ bool Memutil::dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBuff
             ++num;
         }
     }
+
     return true;
+}
+
+void Memutil::runWithoutRegister( std::function<void( void )> inFunction )
+{
+    const bool oldTrackingValue = m_enableTracking;
+    m_enableTracking = false;
+    inFunction();
+    m_enableTracking = oldTrackingValue;
+}
+
+void Memutil::toggleTracking( bool inToggleTracking )
+{
+    MU_MEASURE_SCOPE;
+    if( inToggleTracking == true )
+    {
+        if( m_runMainLoop == false )
+        {
+            init();
+        }
+    }
+
+    m_enableTracking = inToggleTracking;
+}
+
+bool Memutil::getTrackingStatus() const
+{
+    return m_enableTracking;
 }
 
 bool Memutil::waitForAllCallStacksToBeDecoded() const
 {
+    MU_MEASURE_SCOPE;
     bool decodedIsEmpty{ false };
     while( ( decodedIsEmpty == false ) || ( g_isDecodingThread == true ) || ( g_isDecoding == true ) )
     {
-        MutexGuard locker( *m_toBeDecodedMtx );
+        MutexGuard locker( &m_toBeDecodedMtx );
         decodedIsEmpty = m_toBeDecoded->empty();
     }
 
@@ -262,16 +408,22 @@ bool Memutil::waitForAllCallStacksToBeDecoded() const
 
 std::int32_t Memutil::getActiveAllocations() const
 {
-    MutexGuard locker( *m_allocatedMtx );
+    MU_MEASURE_SCOPE;
+    MutexGuard locker( &m_allocatedMtx );
     return static_cast<std::int32_t>( m_allocated->size() );
 }
 
 Memutil::~Memutil()
 {
     m_runMainLoop = false;
-    if( m_mainLoopThread.joinable() )
+
+    for( std::thread* currentThread : m_decodeThreads )
     {
-        m_mainLoopThread.join();
+        if( currentThread->joinable() )
+        {
+            currentThread->join();
+        }
+        delete currentThread;
     }
 }
 

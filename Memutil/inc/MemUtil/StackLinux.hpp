@@ -4,6 +4,8 @@
 
 #if defined( MU_LINUX )
 
+struct backtrace_state;
+
 namespace MU
 {
 class CStackLinux final: public CIStack
@@ -11,11 +13,16 @@ class CStackLinux final: public CIStack
 public:
     void fetch() override;
     void decode() override;
-    const std::array<SLineInfo, G_MaxStackSize>& getStackLines() const override;
+    const StackContents& getStackLines() const override;
+    bool operator==( const CStackLinux& arg ) const;
 
 protected:
 private:
-    std::array<SLineInfo, G_MaxStackSize> m_stackFrames;
+    StackContents m_stackFrames;
+    std::array<void*, G_MaxStackSize> m_data;
+
+    static backtrace_state* getState();
+    static backtrace_state* s_backTrace;
 };
 
 using CStack = CStackLinux;

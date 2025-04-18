@@ -1,8 +1,9 @@
 #pragma once
 
-#if defined( _MSC_VER )
 #include "MemUtil/Generic/DisableWarnings.hpp"
-#include <Dbgeng.h>  // DbgEng.lib
-#include <windows.h>
+
+#include <cmath>
+
+#if defined( _MSC_VER )
 #pragma warning( pop )
 #endif  // #if defined( _MSC_VER )

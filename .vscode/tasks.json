@@ -44,13 +44,12 @@
             },
             "problemMatcher": [
                 "$gcc"
-            ],
-            "dependsOn": "[LINUX][CMAKE][CREATE][DEBUG]"
+            ]
         },
         {
             "label": "[LINUX][CMAKE][CREATE][DEBUG]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Linux -DCMAKE_BUILD_TYPE=Debug",
+            "command": "CC=gcc-14 && CXX=/usr/bin/g++-14 && cmake -S . -B Build-Linux -DCMAKE_BUILD_TYPE=Debug",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -86,6 +85,24 @@
             "dependsOn": "[Win64][DEBUG][BUILLD][tests]"
         },
         {
+            "label": "[Win64][RelWithDebInfo][BUILLD][run_tests]",
+            "type": "shell",
+            "command": "${workspaceFolder}/Build-Windows/tests/RelWithDebInfo/tests_bin.exe",
+            "args": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "dependsOn": "[Win64][RelWithDebInfo][BUILLD][tests]"
+        },
+        {
             "label": "[Win64][DEBUG][BUILLD][tests]",
             "type": "shell",
             "command": "cmake",
@@ -112,9 +129,55 @@
             "dependsOn": "[WINDOWS][CMAKE][CREATE][DEBUG]"
         },
         {
+            "label": "[Win64][RelWithDebInfo][BUILLD][tests]",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "Build-Windows",
+                "--config",
+                "RelWithDebInfo",
+                "-j16",
+                "--target",
+                "tests_bin"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "dependsOn": "[WINDOWS][CMAKE][CREATE][RelWithDebInfo]"
+        },
+        {
             "label": "[WINDOWS][CMAKE][CREATE][DEBUG]",
             "type": "shell",
             "command": "cmake -S . -B Build-Windows -DCMAKE_BUILD_TYPE=Debug",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "[WINDOWS][CMAKE][CREATE][RelWithDebInfo]",
+            "type": "shell",
+            "command": "cmake -S . -B Build-Windows -DCMAKE_BUILD_TYPE=RelWithDebInfo",
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -21,7 +21,8 @@
                     "ignoreFailures": true
                 }
             ],
-            "miDebuggerPath": "/usr/bin/gdb"
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "[LINUX][DEBUG][BUILLD][tests]"
         },
         {
             "name": "[WINDOWS][DEBUG][RUN][04_Hello-Triangle]",

@@ -28,7 +28,7 @@ private:
 class MutexGuard final
 {
 public:
-    MutexGuard( IMutex& inMtx );
+    MutexGuard( IMutex* inMtx );
 
     MutexGuard( const MutexGuard& ) = delete;
     MutexGuard( MutexGuard&& ) = delete;
@@ -40,7 +40,7 @@ public:
 
 protected:
 private:
-    IMutex& m_mtx;
+    IMutex* m_mtx{ nullptr };
 };
 
 }  // namespace MU

@@ -1,6 +1,5 @@
 #include <MemUtil/Generic/IMutex.hpp>
-#include "Generic/MutexSTD.hpp"
-#include "Generic/MutexWin64.hpp"
+#include <MemUtil/Generic/Mutex.hpp>
 
 namespace MU
 {
@@ -9,9 +8,11 @@ IMutex* IMutex::createDefaultMtx()
 {
 #if defined( _MSC_VER )
     return createWin64Mtx();
-#else // #if defined( _MSC_VER )
+    // return createSTDMtx();
+    // return new MutexS();
+#else   // #if defined( _MSC_VER )
     return createSTDMtx();
-#endif // #if defined( _MSC_VER )
+#endif  // #if defined( _MSC_VER )
 }
 
 IMutex* IMutex::createSTDMtx()
@@ -36,15 +37,15 @@ IMutex::~IMutex()
 {
 }
 
-MutexGuard::MutexGuard( IMutex& inMtx ):
+MutexGuard::MutexGuard( IMutex* inMtx ):
     m_mtx( inMtx )
 {
-    m_mtx.lock();
+    m_mtx->lock();
 }
 
 MutexGuard::~MutexGuard()
 {
-    m_mtx.unlock();
+    m_mtx->unlock();
 }
 
 }  // namespace MU

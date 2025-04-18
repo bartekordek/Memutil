@@ -1,10 +1,10 @@
 #pragma once
 
 #include <MemUtil/STL_Imports/STD_cstdint.hpp>
-#include <MemUtil/Generic/Import_boost_assert.hpp>
 #include <MemUtil/STL_Imports/STD_cstring.hpp>
 #include <MemUtil/STL_Imports/STD_cstdarg.hpp>
 #include <MemUtil/STL_Imports/STD_iostream.hpp>
+#include <MemUtil/STL_Imports/STD_assert.hpp>
 
 namespace MU
 {
@@ -20,14 +20,14 @@ public:
     StringStatic( const char* arg ):
         m_size( std::strlen( arg ) )
     {
-        BOOST_ASSERT_MSG( m_size < Capacity, "TOO SMALL BUFFER!" );
+        assert( m_size < Capacity && "TOO SMALL BUFFER!" );
         std::strcpy( m_value, arg );
     }
 
     StringStatic( const StringStatic& arg ):
         m_size( arg.m_size )
     {
-        BOOST_ASSERT_MSG( m_size < Capacity, "TOO SMALL BUFFER!" );
+        assert( m_size < Capacity && "TOO SMALL BUFFER!" );
         std::strcpy( m_value, arg.m_value );
     }
 
@@ -42,8 +42,11 @@ public:
     {
         if( this != &arg )
         {
-            std::strcpy( m_value, arg.m_value );
-            m_size = arg.m_size;
+            if( arg.m_size > 0 )
+            {
+                std::strcpy( m_value, arg.m_value );
+                m_size = arg.m_size;
+            }
         }
         return *this;
     }
@@ -52,8 +55,11 @@ public:
     {
         if( this != &arg )
         {
-            std::strcpy( m_value, arg.m_value );
-            m_size = arg.m_size;
+            if( arg.m_size > 0 )
+            {
+                std::strcpy( m_value, arg.m_value );
+                m_size = arg.m_size;
+            }
 
             arg.m_size = 0u;
         }
@@ -63,7 +69,7 @@ public:
     StringStatic& operator=( const char* arg )
     {
         m_size = static_cast<decltype( m_size )>( std::strlen( arg ) );
-        BOOST_ASSERT_MSG( m_size < Capacity, "TOO SMALL BUFFER!" );
+        assert( m_size < Capacity && "TOO SMALL BUFFER!" );
 
         std::strcpy( m_value, arg );
 
@@ -79,7 +85,7 @@ public:
     }
 
     template <std::uint16_t CapacityArg>
-    bool operator==(const StringStatic<CapacityArg>& arg) const
+    bool operator==( const StringStatic<CapacityArg>& arg ) const
     {
         if constexpr( CapacityArg != Capacity )
         {
@@ -94,7 +100,7 @@ public:
         return std::strcmp( m_value, arg ) == 0;
     }
 
-    bool operator<(const StringStatic& arg) const
+    bool operator<( const StringStatic& arg ) const
     {
         return std::strcmp( m_value, arg.m_value ) < 0;
     }
@@ -109,7 +115,7 @@ public:
     {
         if( m_size + inSize + 1u >= Capacity )
         {
-            BOOST_ASSERT_MSG( false, "NOT ENOUGHT PLACE FOR THIS STRING!" );
+            assert( false && "NOT ENOUGHT PLACE FOR THIS STRING!" );
             return;
         }
 

@@ -8,6 +8,7 @@ set( PROJECT_NAME memutil )
 project(${PROJECT_NAME} LANGUAGES CXX)
 
 set( CMAKE_ENABLE_EXPORTS true )
+set( CMAKE_VERBOSE_MAKEFILE true )
 
 if( MSVC )
     # warning level 4 and all warnings as errors
@@ -40,6 +41,7 @@ add_library( ${PROJECT_NAME} STATIC ${SOURCES} )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/inc )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/src )
 
+if (MSVC)
 set( DEPENDENCIES
 PUBLIC boost_assert
 PRIVATE boost_config
@@ -53,10 +55,13 @@ PRIVATE boost_throw_exception
 PRIVATE boost_stacktrace
 PUBLIC TracyClient
 )
+else()
+set( DEPENDENCIES
+PUBLIC TracyClient
+)
+endif()
 
 if (MSVC)
-    list(APPEND DEPENDENCIES PUBLIC boost_winapi)
-    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_windbg_cached)
 else()
     list(APPEND DEPENDENCIES PUBLIC boost_stacktrace)
 endif()
@@ -71,7 +76,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE MU_STATIC=1 )
 if (MSVC)
     list(APPEND LIBS msvcmrtd )
     target_link_options(${PROJECT_NAME} PUBLIC "/INCREMENTAL:NO")
-    target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} )
+    target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} DbgEng user32 advapi32 dbghelp )
 else()
     target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} stdc++fs )
 endif()
