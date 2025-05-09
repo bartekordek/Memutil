@@ -6,6 +6,11 @@
 #include <MemUtil/STL_Imports/STD_iostream.hpp>
 #include <MemUtil/STL_Imports/STD_assert.hpp>
 
+#if defined( _MSC_VER )
+#pragma warning( push, 0 )
+#pragma warning( disable : 4996 )
+#endif // defined( _MSC_VER )
+
 namespace MU
 {
 
@@ -175,3 +180,8 @@ private:
     std::size_t m_capacity{ Capacity };
 };
 }  // namespace MU
+
+
+#if defined( _MSC_VER )
+#pragma warning( pop )
+#endif  // defined( _MSC_VER )
