@@ -54,10 +54,12 @@ PRIVATE boost_static_assert
 PRIVATE boost_throw_exception
 PRIVATE boost_stacktrace
 PUBLIC TracyClient
+PRIVATE concurrentqueue
 )
 else()
 set( DEPENDENCIES
 PUBLIC TracyClient
+PRIVATE concurrentqueue
 )
 endif()
 

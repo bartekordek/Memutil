@@ -4,6 +4,17 @@ project(mem_util_main)
 
 include(CTest)
 
+cmake_policy(SET CMP0069 NEW)
+set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+
+set(MU_ADDRESS_SANITIZER false)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+
+if(MU_ADDRESS_SANITIZER)
+    message("Adding address sanitizer compile option.")
+    add_compile_options(-fsanitize=address)
+endif()
+
 set(default_build_type "Debug")
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
@@ -63,6 +74,7 @@ add_subdirectory(${MU_DEPS_PATH}/boost/stacktrace)
 add_subdirectory(${MU_DEPS_PATH}/boost/static_assert)
 add_subdirectory(${MU_DEPS_PATH}/boost/throw_exception)
 add_subdirectory(${MU_DEPS_PATH}/boost/winapi)
+add_subdirectory(${MU_DEPS_PATH}/concurrentqueue)
 
 set( gtest_force_shared_crt ON CACHE BOOL "" FORCE )
 add_subdirectory(${MU_DEPS_PATH}/googletest)
