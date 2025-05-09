@@ -155,9 +155,9 @@
             "dependsOn": "[WINDOWS][CMAKE][CREATE][RelWithDebInfo]"
         },
         {
-            "label": "[WINDOWS][CMAKE][CREATE][DEBUG]",
+            "label": "[WINDOWS][CMAKE][CREATE]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Windows -DCMAKE_BUILD_TYPE=Debug",
+            "command": "cmake -S . -B Build-Windows",
             "group": {
                 "kind": "build",
                 "isDefault": true
