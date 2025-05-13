@@ -7,7 +7,8 @@
 namespace MU
 {
 #if defined( _MSC_VER )
-using Mutex = MutexWin64;
+//using Mutex = MutexWin64;
+using Mutex = MutexSTD;
 #else   // #if defined( _MSC_VER )
 using Mutex = MutexSTD;
 #endif  // #if defined( _MSC_VER )
