@@ -51,9 +51,7 @@ protected:
     }
 
     virtual void SetUp();
-    virtual void TearDown()
-    {
-    }
+    virtual void TearDown();
 
     static void SetUpTestSuite();
     static void TearDownTestSuite();

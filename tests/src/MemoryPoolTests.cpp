@@ -5,10 +5,26 @@
 #include <MemUtil/STL_Imports/STD_random.hpp>
 #include <MemUtil/STL_Imports/STD_vector.hpp>
 
+namespace Allocator
+{
+void* allocate( std::size_t inSize )
+{
+    MU_MEASURE_SCOPE;
+    return std::malloc( inSize );
+}
+
+void deallocate( void* ptr )
+{
+    MU_MEASURE_SCOPE;
+    std::free( ptr );
+}
+
+}  // namespace Allocator
+
 void* operator new( std::size_t size )
 {
     MU_MEASURE_SCOPE;
-    void* result = std::malloc( size );
+    void* result = Allocator::allocate( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
 }
@@ -16,7 +32,7 @@ void* operator new( std::size_t size )
 void* operator new[]( std::size_t size )
 {
     MU_MEASURE_SCOPE;
-    void* result = std::malloc( size );
+    void* result = Allocator::allocate( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
 }
@@ -25,28 +41,28 @@ void operator delete( void* ptr ) noexcept
 {
     MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete( void* ptr, std::size_t /*size*/ ) noexcept
 {
     MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete[]( void* ptr ) noexcept
 {
     MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete[]( void* ptr, std::size_t /*size*/ ) noexcept
 {
     MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 MemoryPoolTests::MemoryPoolTests()
@@ -75,9 +91,10 @@ float MemoryPoolTests::m_untrackedDelete{ 0.f };
 
 void MemoryPoolTests::SetUpTestSuite()
 {
+    MU_MEASURE_SCOPE;
     MemUtil = &MU::Memutil::getInstance();
 
-    m_samplesCount = 1000000;
+    m_samplesCount = 500000;
     m_sampels.resize( m_samplesCount );
     m_ptrs.resize( m_samplesCount );
 
@@ -88,6 +105,12 @@ void MemoryPoolTests::SetUpTestSuite()
         const std::uint64_t currentSize = getRandom( 2, maxAllocationBlock );
         m_sampels[i] = currentSize;
     }
+}
+
+void MemoryPoolTests::TearDown()
+{
+    MU_MEASURE_SCOPE;
+    MemUtil->waitForAllCallStacksToBeDecoded();
 }
 
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION )
@@ -132,14 +155,14 @@ TEST_F( MemoryPoolTests, TwoAllocations )
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 {
     MU_MEASURE_SCOPE;
-    constexpr std::size_t buffSize{ 2048 };
+    constexpr std::size_t buffSize{ 4096 };
     char* charOutput = new char[buffSize];
 
     MemUtil->toggleTracking( true );
 
     TestClass<8>* tc = new TestClass<8>();
     MemUtil->waitForAllCallStacksToBeDecoded();
-    MemUtil->dumpActiveAllocationsToBuffer( charOutput, buffSize );
+    ASSERT_TRUE( MemUtil->dumpActiveAllocationsToBuffer( charOutput, buffSize ) );
 
     printf( "char buff:\n%s\n", charOutput );
 
@@ -152,6 +175,8 @@ TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 TEST_F( MemoryPoolTests, SortingValues )
 {
     MU_MEASURE_SCOPE;
+
+    MemUtil->toggleTracking( false );
 
     std::vector<void*> allocations;
     allocations.reserve( 2048 );
@@ -229,10 +254,12 @@ TEST_F( MemoryPoolTests, SpeedBenchmarkNewTracked )
 
     MemUtil->toggleTracking( true );
     auto start = std::chrono::steady_clock::now();
-    for( std::size_t i = 0; i < m_samplesCount; ++i )
     {
-        MU_MEASURE_SCOPE;
-        m_ptrs[i] = new std::byte[m_sampels[i]];
+        MU_MEASURE_SUBSCOPE( SpeedBenchmarkNewTracked_MAIN, "SpeedBenchmarkNewTracked_MAIN", true );
+        for( std::size_t i = 0; i < m_samplesCount; ++i )
+        {
+            m_ptrs[i] = new std::byte[m_sampels[i]];
+        }
     }
     auto elapsed = std::chrono::steady_clock::now() - start;
     m_trackedNew = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
@@ -273,14 +300,16 @@ TEST_F( MemoryPoolTests, SpeedBenchmarkDeleteTracked )
 
     for( std::size_t i = 0; i < m_samplesCount; ++i )
     {
-        MU_MEASURE_SCOPE;
         m_ptrs[i] = new std::byte[m_sampels[i]];
     }
 
     auto start = std::chrono::steady_clock::now();
-    for( std::size_t i = 0; i < m_samplesCount; ++i )
     {
-        delete m_ptrs[i];
+        MU_MEASURE_SUBSCOPE( SpeedBenchmarkDeleteTrackedMAIN, "SpeedBenchmarkDeleteTrackedMAIN", true );
+        for( std::size_t i = 0; i < m_samplesCount; ++i )
+        {
+            delete m_ptrs[i];
+        }
     }
     auto elapsed = std::chrono::steady_clock::now() - start;
     m_trackedDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );

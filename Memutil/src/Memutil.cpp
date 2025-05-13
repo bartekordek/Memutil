@@ -4,10 +4,28 @@
 #include <MemUtil/STL_Imports/STD_cstdio.hpp>
 #include <MemUtil/Generic/ScopeExit.hpp>
 #include <MemUtil/Generic/IMutex.hpp>
+#include <MemUtil/Generic/DataContainer.hpp>
+#include <MemUtil/Generic/DequeThreadSafe.hpp>
+#include <MemUtil/Generic/ListThreadSafe.hpp>
+#include "Generic/ConcurentQueueAdapter.hpp"
 #include <MemUtil/Stack.hpp>
 #include <MemUtil/Import_tracy.hpp>
+#include <MemUtil/IDebugWrapper.hpp>
 #include <MemUtil/STL_Imports/STD_algorithm.hpp>
 #include <MemUtil/STL_Imports/STD_cmath.hpp>
+
+#if 0 // DEBUG_THIS_FILE
+    #define DEBUG_THIS_FILE 1
+
+    #if defined(CUL_COMPILER_MSVC)
+        #pragma optimize( "", off )
+    #elif defined(CUL_COMPILER_CLANG)
+        #pragma clang optimize off
+    #elif defined(CUL_COMPILER_GCC)
+        #pragma GCC push_options
+        #pragma GCC optimize( "O0" )
+    #endif
+#endif
 
 namespace MU
 {
@@ -15,6 +33,50 @@ namespace MU
 thread_local bool g_blockCurrentThread{ false };
 thread_local bool g_isDecodingThread{ false };
 bool g_isDecoding{ false };
+Memutil* g_instance{ nullptr };
+
+
+std::unordered_map<void*, SLineInfo> g_stackLineCache;
+std::mutex g_stackLineCacheMtx;
+
+std::optional<SLineInfo> findLineInfoImpl( void* inAddres );
+std::optional<SLineInfo> findLineInfo( bool inLock, void* inAddres )
+{
+    if( inLock )
+    {
+        std::lock_guard<std::mutex> locker( g_stackLineCacheMtx );
+        return findLineInfoImpl( inAddres );
+    }
+    return findLineInfoImpl( inAddres );
+}
+
+std::optional<SLineInfo> findLineInfoImpl(void* inAddres)
+{
+    const auto it = g_stackLineCache.find( inAddres );
+    if( it != g_stackLineCache.end() )
+    {
+        return it->second;
+    }
+
+    return {};
+}
+
+void addLineInfoImpl( void* inAddress, const SLineInfo& inInfo );
+void addLineInfo( bool lock, void* inAddress, const SLineInfo& inInfo )
+{
+    if( lock )
+    {
+        std::lock_guard<std::mutex> locker( g_stackLineCacheMtx );
+        addLineInfoImpl( inAddress, inInfo );
+        return;
+    }
+    addLineInfoImpl( inAddress, inInfo );
+}
+
+void addLineInfoImpl( void* inAddress, const SLineInfo& inInfo )
+{
+    g_stackLineCache[inAddress] = inInfo;
+}
 
 Memutil& Memutil::getInstance()
 {
@@ -24,6 +86,15 @@ Memutil& Memutil::getInstance()
 
 Memutil::Memutil()
 {
+    IDebugWrapper::getInstance().init();
+}
+
+template <typename p>
+p Pow( p x, p y )
+{
+    p i = 1;
+    for( p j = 1; j <= y; j++ ) i *= x;
+    return i;
 }
 
 void Memutil::init()
@@ -34,7 +105,28 @@ void Memutil::init()
         return;
     }
 
-    m_toBeDecoded = new std::deque<CStack>();
+    //m_toBeDecoded = new DataContainer<CStack>();
+    //m_toBeDecoded = new DequeThreadSafe<CStack>();
+    constexpr std::int8_t containerType = 1;
+    if(containerType == 0)
+    {
+        m_toBeDecodedAlloc = new ConcurentQueueAdapter<CStack>();
+        m_toBeDecodedDealloc = new ConcurentQueueAdapter<CStack>();
+    }
+    else
+    {
+        m_toBeDecodedAlloc = new ListThreadSafe<CStack>();
+        m_toBeDecodedDealloc = new ListThreadSafe<CStack>();
+    }
+    
+    const std::size_t objectsToContain{ Pow<std::size_t>( 2u, 16u ) };
+    m_toBeDecodedAlloc->init( objectsToContain );
+    m_toBeDecodedDealloc->init( objectsToContain );
+#if PMR_ALLOCATED
+    m_allocated.init( 64u * 1024u * 1024u );
+#else
+    m_allocated = new std::unordered_map<void*, CStack>();
+#endif // PMR_ALLOCATED
 
     m_runMainLoop = true;
 
@@ -44,6 +136,7 @@ void Memutil::init()
     }
 
     m_initialized = true;
+    g_instance = this;
 }
 
 void Memutil::logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize )
@@ -83,7 +176,7 @@ void Memutil::registerStack( void* ptr, std::uint64_t inSize )
 {
     MU_MEASURE_SCOPE;
 
-    CStack stack;
+    static thread_local CStack stack;
 
     const bool oldTrackingValue2 = m_enableTracking;
     m_enableTracking = false;
@@ -93,14 +186,9 @@ void Memutil::registerStack( void* ptr, std::uint64_t inSize )
     stack.Data = ptr;
     stack.Type = EStackType::Alloc;
 
-    MU_MEASURE_SUBSCOPE( Memutil_registerStack_l, "lock", true );
-    MutexGuard locker( &m_toBeDecodedMtx );
-
-    MU_MEASURE_SUBSCOPE( Memutil_registerStack_p, "push_back", true );
-
     const bool oldTrackingValue = m_enableTracking;
     m_enableTracking = false;
-    m_toBeDecoded->emplace_back( stack );
+    m_toBeDecodedAlloc->addToBack( stack );
     m_enableTracking = oldTrackingValue;
 }
 
@@ -108,15 +196,14 @@ void Memutil::unregisterStack( void* ptr, std::uint64_t /*inSize*/ )
 {
     MU_MEASURE_SCOPE;
 
-    CStack stack;
+    static thread_local CStack stack;
     stack.Data = ptr;
     stack.Type = EStackType::Dealloc;
 
     MutexGuard locker( &m_allocatedMtx );
-    MU_MEASURE_SUBSCOPE( Memutil_registerStack, "lock", true );
     const bool oldTrackingValue = m_enableTracking;
     m_enableTracking = false;
-    m_toBeDecoded->emplace_back( stack );
+    m_toBeDecodedDealloc->addToBack( stack );
     m_enableTracking = oldTrackingValue;
 }
 
@@ -131,59 +218,70 @@ void Memutil::mainLoop()
     ++threadumber;
 
     MU_SET_THREAD_NAME( threadName );
-    CStack currentTrace;
+
     while( m_runMainLoop )
     {
-        MU_MEASURE_SUBSCOPE( MemutilmainLoop_00, "fetch", true );
+        auto decodeFromList = [this]( IDequeThreadSafe<CStack>* inList)
         {
-            MutexGuard locker( &m_toBeDecodedMtx );
-            MU_MEASURE_SUBSCOPE( MemutilmainLoop_01, "lock", true );
-            if( m_toBeDecoded->empty() == false )
-            {
-                currentTrace = m_toBeDecoded->front();
+            CStack currentTrace;
 
-                const bool oldTrackingValue = m_enableTracking;
-                m_enableTracking = false;
-                m_toBeDecoded->pop_front();
-                m_enableTracking = oldTrackingValue;
+            MU_MEASURE_SUBSCOPE( DecodeList, "DecodeList", true );
 
-                g_blockCurrentThread = false;
-                g_isDecoding = true;
-            }
-            else
+            g_blockCurrentThread = true;
+            std::optional<CStack> currentValue = inList->getAndPopFront();
+            g_blockCurrentThread = false;
+
             {
-                g_isDecoding = false;
-            }
-        }
-        if( g_isDecoding )
-        {
-            if( currentTrace.Type == EStackType::Alloc )
-            {
-                MU_MEASURE_SUBSCOPE( MemutilmainLoop_01, "decode", true );
-                currentTrace.decode();
-                MutexGuard locker( &m_allocatedMtx );
-                MU_MEASURE_SUBSCOPE( MemutilmainLoop_02, "lock", true );
-                m_allocated->insert( { currentTrace.Data, currentTrace } );
-            }
-            else
-            {
+                if( currentValue.has_value() )
                 {
+                    currentTrace = currentValue.value();
+                    g_isDecoding = true;
+                }
+                else
+                {
+                    g_isDecoding = false;
+                }
+            }
+            if( g_isDecoding )
+            {
+                if( currentTrace.Type == EStackType::Alloc )
+                {
+                    MU_MEASURE_SUBSCOPE( MemutilmainLoop_01, "decode", true );
+                    currentTrace.decode();
                     MutexGuard locker( &m_allocatedMtx );
-                    const auto it = m_allocated->find( currentTrace.Data );
-                    if( it != m_allocated->end() )
+                    MU_MEASURE_SUBSCOPE( MemutilmainLoop_02, "lock", true );
+                    g_blockCurrentThread = true;
+                    ( *m_allocated )[currentTrace.Data] = currentTrace;
+                    g_blockCurrentThread = false;
+                }
+                else if( currentTrace.Type == EStackType::Dealloc )
+                {
                     {
-                        m_allocated->erase( currentTrace.Data );
-                        continue;
+                        MutexGuard locker( &m_allocatedMtx );
+                        const auto it = m_allocated->find( currentTrace.Data );
+                        if( it != m_allocated->end() )
+                        {
+                            g_blockCurrentThread = true;
+                            m_allocated->erase( currentTrace.Data );
+                            g_blockCurrentThread = false;
+                            return;
+                        }
+                    }
+                    {
+                        inList->addToBack( currentTrace );
                     }
                 }
+                else
                 {
-                    MutexGuard locker( &m_toBeDecodedMtx );
-                    m_toBeDecoded->push_back( currentTrace );
+                    assert( false );
                 }
-            }
 
-            g_isDecoding = false;
-        }
+                g_isDecoding = false;
+            }
+        };
+
+        decodeFromList( m_toBeDecodedAlloc );
+        decodeFromList( m_toBeDecodedDealloc );
     }
     printf( "Ending loop.\n" );
 }
@@ -280,8 +378,6 @@ bool Memutil::dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t i
     std::int32_t bufferLeft{ static_cast<std::int32_t>( inBufferCapacity ) };
     std::int32_t currentWordSize{ 0u };
 
-    const bool lastTrackingStatus = getTrackingStatus();
-
     struct SameStackGroup
     {
         CStack Stack;
@@ -343,6 +439,11 @@ bool Memutil::dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t i
         std::size_t num{ 0u };
         for( const auto& line : group.Stack.getStackLines() )
         {
+            if( bufferLeft <= 0 )
+            {
+                return false;
+            }
+
             if( line.Value.empty() )
             {
                 ++num;
@@ -399,8 +500,7 @@ bool Memutil::waitForAllCallStacksToBeDecoded() const
     bool decodedIsEmpty{ false };
     while( ( decodedIsEmpty == false ) || ( g_isDecodingThread == true ) || ( g_isDecoding == true ) )
     {
-        MutexGuard locker( &m_toBeDecodedMtx );
-        decodedIsEmpty = m_toBeDecoded->empty();
+        decodedIsEmpty = m_toBeDecodedAlloc->isEmpty() && m_toBeDecodedDealloc->isEmpty();
     }
 
     return true;
@@ -415,6 +515,7 @@ std::int32_t Memutil::getActiveAllocations() const
 
 Memutil::~Memutil()
 {
+    MU_MEASURE_SCOPE;
     m_runMainLoop = false;
 
     for( std::thread* currentThread : m_decodeThreads )
@@ -425,6 +526,18 @@ Memutil::~Memutil()
         }
         delete currentThread;
     }
+    std::cout << "Ending !\n";
 }
 
 }  // namespace MU
+
+
+#if defined( DEBUG_THIS_FILE )
+    #if defined(CUL_COMPILER_MSVC)
+        #pragma optimize( "", on )
+    #elif defined( CUL_COMPILER_CLANG)
+        #pragma clang optimize on
+    #elif defined( CUL_COMPILER_GCC)
+        #pragma GCC pop_options
+    #endif
+#endif  // #if defined(DEBUG_THIS_FILE)

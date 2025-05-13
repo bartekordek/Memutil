@@ -3,15 +3,14 @@
 #include <MemUtil/Import.hpp>
 #include <MemUtil/Generic/StringStatic.hpp>
 #include <MemUtil/Generic/StackContainer.hpp>
+#include <MemUtil/Generic/PMR_unordered_map.hpp>
 #include <MemUtil/Stack.hpp>
 #include <MemUtil/Generic/Mutex.hpp>
 #include <MemUtil/STL_Imports/STD_array.hpp>
 #include <MemUtil/STL_Imports/STD_thread.hpp>
-#include <MemUtil/STL_Imports/STD_memory_resource.hpp>
 #include <MemUtil/STL_Imports/STD_set.hpp>
 #include <MemUtil/STL_Imports/STD_memory.hpp>
 #include <MemUtil/STL_Imports/STD_deque.hpp>
-#include <MemUtil/STL_Imports/STD_unordered_map.hpp>
 #include <MemUtil/STL_Imports/STD_list.hpp>
 #include <MemUtil/STL_Imports/STD_map.hpp>
 #include <MemUtil/STL_Imports/STD_functional.hpp>
@@ -32,6 +31,11 @@ enum class SortType : std::int8_t
     SizeAsceding,
     SizeDescending
 };
+
+template <class C>
+class IDequeThreadSafe;
+
+#define PMR_ALLOCATED 0
 
 class Memutil final
 {
@@ -93,10 +97,15 @@ private:
 
     bool m_enableTracking{ false };
 
-    std::deque<CStack>* m_toBeDecoded{nullptr};
-    mutable Mutex m_toBeDecodedMtx;
+    IDequeThreadSafe<CStack>* m_toBeDecodedAlloc{ nullptr };
+    IDequeThreadSafe<CStack>* m_toBeDecodedDealloc{ nullptr };
 
-    StackContainer<std::pmr::unordered_map<void*, CStack>, 4u * 1024u * 1024> m_allocated;
+#if PMR_ALLOCATED
+    //StackContainer<std::pmr::unordered_map<void*, CStack>, 4u * 1024u * 1024> m_allocated;
+    PMR_unordered_map<void*, CStack> m_allocated;
+#else // PMR_ALLOCATED
+    std::unordered_map<void*, CStack>* m_allocated{ nullptr };
+#endif // PMR_ALLOCATED
     mutable Mutex m_allocatedMtx;
 
     std::atomic<std::uint64_t> m_maxToBeDecoded{ 0u };

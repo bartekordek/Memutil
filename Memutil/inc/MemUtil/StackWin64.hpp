@@ -4,12 +4,6 @@
 
 #if defined( MU_WINDOWS )
 
-extern "C"
-{
-    typedef unsigned long( __stdcall* ___mu_t_RtlWalkFrameChain )( void**, unsigned long, unsigned long );
-    extern ___mu_t_RtlWalkFrameChain ___mu_RtlWalkFrameChain;
-}
-
 namespace MU
 {
 class CStackWin64 final: public CIStack

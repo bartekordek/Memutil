@@ -46,8 +46,8 @@ public:
     CIStack();
     CIStack( const CIStack& arg );
     CIStack( CIStack&& arg );
-    CIStack& operator=( const CIStack& arg );
-    CIStack& operator=( CIStack&& arg );
+    CIStack& operator=( const CIStack& arg ) = delete;
+    CIStack& operator=( CIStack&& arg ) = delete;
 
     virtual void fetch() = 0;
     virtual void decode() = 0;
