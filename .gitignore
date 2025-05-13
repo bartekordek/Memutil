@@ -51,3 +51,4 @@ Build-Linux
 *.vcxproj
 *.filters
 Testing
+/bin/
