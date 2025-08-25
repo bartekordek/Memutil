@@ -157,7 +157,7 @@
         {
             "label": "[WINDOWS][CMAKE][CREATE]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Windows",
+            "command": "cmake -S . -B Build-Windows -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF",
             "group": {
                 "kind": "build",
                 "isDefault": true
