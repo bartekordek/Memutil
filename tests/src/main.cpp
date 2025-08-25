@@ -16,6 +16,6 @@ int main( int argc, char** argv )
     ::testing::InitGoogleTest( &argc, argv );
     const int result = RUN_ALL_TESTS();
 
-     std::this_thread::sleep_for( std::chrono::seconds( 6u ) );
+    std::this_thread::sleep_for( std::chrono::seconds( 6u ) );
     return result;
 }
