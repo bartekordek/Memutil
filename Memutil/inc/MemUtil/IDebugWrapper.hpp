@@ -16,7 +16,7 @@ public:
     virtual bool getLineByOffset( std::uint64_t offset, std::uint64_t& inOutlineNum, char* inOutName, std::size_t inOutNameSize,
                                   std::uint64_t& outSize ) = 0;
 
-    MU_NONCOPYABLE( IDebugWrapper );
+    MU_NONCOPYABLE( IDebugWrapper )
 
 protected:
     IDebugWrapper();
