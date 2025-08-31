@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Memutil/Generic/IDequeThreadSafe.hpp>
+#include <MemUtil/Generic/IDequeThreadSafe.hpp>
 #include <MemUtil/STL_Imports/STD_mutex.hpp>
 #include <MemUtil/Import_tracy.hpp>
 

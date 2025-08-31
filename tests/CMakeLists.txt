@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.5)
 
-#cmake -DCMAKE_BUILD_TYPE=Debug
+set( CMAKE_CXX_STANDARD 23 )
 
 get_filename_component( basename ${CMAKE_CURRENT_SOURCE_DIR} NAME )
 

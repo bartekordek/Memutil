@@ -51,6 +51,7 @@ public:
     MULib_API void logRealloc( void* inOldPtr, void* inNewPtr, std::uint64_t inSize );
     MULib_API void logAlloc( void* inPtr, std::uint64_t inSize );
     MULib_API void logFree( void* inPtr );
+    MULib_API void executeWithoutAllocationLog( std::function<void( void )> inLambda );
 
     /**
      * Start or stop logging callstacks.
@@ -79,6 +80,9 @@ public:
     MULib_API bool dumpActiveAllocationsToBuffer( char* outBuffer, std::size_t inBufferCapacity );
     MULib_API bool waitForAllCallStacksToBeDecoded() const;
     MULib_API std::int32_t getActiveAllocations() const;
+    MULib_API void waitForAllAllocationsToBeResolved() const;
+    MULib_API void beginUntracked();
+    MULib_API void endUntracked();
 
 private:
     MULib_API Memutil();
@@ -87,7 +91,7 @@ private:
     void unregisterStack( void* ptr, std::uint64_t inSize );
     void dumpActiveAllocationsToOutput_impl();
     bool dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t inBufferCapacity );
-    void runWithoutRegister( std::function<void( void )> inFunction );
+
 
     bool m_initialized{ false };
     constexpr static std::size_t decodeWorkersCount{ 1u };
@@ -97,8 +101,7 @@ private:
 
     bool m_enableTracking{ false };
 
-    IDequeThreadSafe<CStack>* m_toBeDecodedAlloc{ nullptr };
-    IDequeThreadSafe<CStack>* m_toBeDecodedDealloc{ nullptr };
+    IDequeThreadSafe<CStack>* m_stacksToBeDecoded{ nullptr };
 
 #if PMR_ALLOCATED
     //StackContainer<std::pmr::unordered_map<void*, CStack>, 4u * 1024u * 1024> m_allocated;

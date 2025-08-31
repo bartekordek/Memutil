@@ -1,16 +1,12 @@
 #include <MemUtil/IStack.hpp>
 #include <MemUtil/Import_windows.hpp>
-#include <Memutil/Generic/StackContainer.hpp>
-#include <Memutil/STL_Imports/STD_unordered_map.hpp>
+#include <MemUtil/Generic/StackContainer.hpp>
+#include <MemUtil/STL_Imports/STD_unordered_map.hpp>
 #include <MemUtil/Import_tracy.hpp>
 
 namespace MU
 {
-
-StackContainer<std::pmr::unordered_map<void*, SLineInfo>, 4u * 1024u * 1024> g_stackLineCache;
-
-
-bool SLineInfo::operator == ( const SLineInfo& arg ) const
+bool SLineInfo::operator==( const SLineInfo& arg ) const
 {
     return ( Value == arg.Value ) && ( Number == arg.Number );
 }
@@ -20,8 +16,8 @@ SLineInfo::SLineInfo()
 }
 
 SLineInfo::SLineInfo( const SLineInfo& arg ):
-    Value(arg.Value),
-    Number(arg.Number)
+    Value( arg.Value ),
+    Number( arg.Number )
 {
 }
 
@@ -51,11 +47,9 @@ SLineInfo& SLineInfo::operator=( const SLineInfo& arg )
     return *this;
 }
 
- SLineInfo::~SLineInfo()
+SLineInfo::~SLineInfo()
 {
 }
-
-
 
 CIStack::CIStack():
     Data( nullptr ),
@@ -64,14 +58,14 @@ CIStack::CIStack():
 {
 }
 
- CIStack::CIStack( const CIStack& arg ):
+CIStack::CIStack( const CIStack& arg ):
     Data( arg.Data ),
     Size( arg.Size ),
     Type( arg.Type )
 {
 }
 
- CIStack::CIStack( CIStack&& arg ):
+CIStack::CIStack( CIStack&& arg ):
     Data( arg.Data ),
     Size( arg.Size ),
     Type( arg.Type )
@@ -81,30 +75,34 @@ CIStack::CIStack():
     arg.Type = EStackType::None;
 }
 
-const MU::SLineInfo* CIStack::getFromCache( void* inPtr ) const
+CIStack& CIStack::operator=( const CIStack& arg )
 {
-    MU_MEASURE_SCOPE;
-    std::lock_guard<std::mutex> locker( m_cacheMtx );
-    const auto it = g_stackLineCache->find( inPtr );
-    if (it != g_stackLineCache->end())
+    if( this != &arg )
     {
-        return &it->second;
+        Data = arg.Data;
+        Size = arg.Size;
+        Type = arg.Type;
     }
-
-    return nullptr;
+    return *this;
 }
 
-void CIStack::addToCache( void* inPtr, SLineInfo* inLine )
+CIStack& CIStack::operator=( CIStack&& arg )
 {
-    MU_MEASURE_SCOPE;
-    std::lock_guard<std::mutex> locker( m_cacheMtx );
-    ( *g_stackLineCache )[inPtr] = *inLine;
+    if( this != &arg )
+    {
+        Data = arg.Data;
+        Size = arg.Size;
+        Type = arg.Type;
+
+        arg.Data = nullptr;
+        arg.Size = 0u;
+        arg.Type = EStackType::None;
+    }
+    return *this;
 }
 
 CIStack::~CIStack()
 {
 }
-
-
 
 }  // namespace MU

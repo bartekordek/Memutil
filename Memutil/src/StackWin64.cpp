@@ -4,6 +4,7 @@
 #include <MemUtil/Import_windows.hpp>
 #include <MemUtil/Import_tracy.hpp>
 #include <MemUtil/IDebugWrapper.hpp>
+#include "StackCache.hpp"
 
 namespace MU
 {
@@ -27,16 +28,11 @@ namespace MU
 {
 }
 
- std::atomic<std::uint64_t> g_counter;
-
 CStackWin64& CStackWin64::operator=( const CStackWin64& arg )
 {
-    ++g_counter;
     if( this != &arg )
     {
-        Data = arg.Data;
-        Size = arg.Size;
-        Type = arg.Type;
+        CIStack::operator=( arg );
         m_stackFrames = arg.m_stackFrames;
         m_data = arg.m_data;
     }
@@ -47,15 +43,9 @@ CStackWin64& CStackWin64::operator=( CStackWin64&& arg )
 {
     if( this != &arg )
     {
-        Data = arg.Data;
-        Size = arg.Size;
-        Type = arg.Type;
-        m_stackFrames = arg.m_stackFrames;
-        m_data = arg.m_data;
-
-        arg.Data = nullptr;
-        arg.Size = 0u;
-        arg.Type = EStackType::None;
+        CIStack::operator=( arg );
+        m_stackFrames = std::move( arg.m_stackFrames );
+        m_data = std::move( arg.m_data );
     }
     return *this;
 }
@@ -78,7 +68,7 @@ void CStackWin64::decode()
         MU_MEASURE_SUBSCOPE( decode00, "CStackWin64::decode::it", true );
 
         void* currentAdd = m_data[i];
-        const SLineInfo* fromCache = CIStack::getFromCache( currentAdd );
+        const SLineInfo* fromCache = CStackCache::getInstance().get( currentAdd );
         if( fromCache )
         {
             m_stackFrames[i] = *fromCache;
@@ -96,7 +86,7 @@ void CStackWin64::decode()
         SLineInfo& currentLine = m_stackFrames[i];
         currentLine.Value = name;
         currentLine.Number = static_cast<std::uint16_t>( lineNum );
-        CIStack::addToCache( currentAdd, &currentLine );
+        CStackCache::getInstance().add( &currentLine, currentAdd );
     }
 }
 

@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "[LINUX][DEBUG][BUILLD][run_tests]",
+            "label": "[Run][run_tests][Linux][Debug]",
             "type": "shell",
             "command": "${workspaceFolder}/bin/tests_bin",
             "args": [],
@@ -22,7 +22,7 @@
             "dependsOn": "[LINUX][DEBUG][BUILLD][tests]"
         },
         {
-            "label": "[LINUX][DEBUG][BUILLD][tests]",
+            "label": "[Build][tests][Linux][Debug]",
             "type": "shell",
             "command": "cmake",
             "args": [
@@ -38,26 +38,6 @@
                 "echo": true,
                 "reveal": "always",
                 "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "problemMatcher": [
-                "$gcc"
-            ]
-        },
-        {
-            "label": "[LINUX][CMAKE][CREATE][DEBUG]",
-            "type": "shell",
-            "command": "CC=gcc-14 && CXX=/usr/bin/g++-14 && cmake -S . -B Build-Linux -DCMAKE_BUILD_TYPE=Debug",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
                 "panel": "dedicated",
                 "showReuseMessage": false,
                 "clear": true
@@ -126,7 +106,7 @@
             "problemMatcher": [
                 "$msCompile"
             ],
-            "dependsOn": "[WINDOWS][CMAKE][CREATE][DEBUG]"
+            "dependsOn": "[WINDOWS][CMAKE][CREATE]"
         },
         {
             "label": "[Win64][RelWithDebInfo][BUILLD][tests]",
@@ -152,7 +132,7 @@
             "problemMatcher": [
                 "$msCompile"
             ],
-            "dependsOn": "[WINDOWS][CMAKE][CREATE][RelWithDebInfo]"
+            "dependsOn": "[WINDOWS][CMAKE][CREATE]"
         },
         {
             "label": "[WINDOWS][CMAKE][CREATE]",
@@ -175,9 +155,9 @@
             }
         },
         {
-            "label": "[WINDOWS][CMAKE][CREATE][RelWithDebInfo]",
+            "label": "[CMAKE][CREATE][Linux]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Windows -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+            "command": "cmake -S . -B Build-Linux -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF",
             "group": {
                 "kind": "build",
                 "isDefault": true

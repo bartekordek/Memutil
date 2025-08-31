@@ -155,7 +155,7 @@ TEST_F( MemoryPoolTests, TwoAllocations )
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 {
     MU_MEASURE_SCOPE;
-    constexpr std::size_t buffSize{ 4096 };
+    constexpr std::size_t buffSize{ 8192 };
     char* charOutput = new char[buffSize];
 
     MemUtil->toggleTracking( true );
@@ -206,11 +206,13 @@ TEST_F( MemoryPoolTests, SortingValues )
     MemUtil->waitForAllCallStacksToBeDecoded();
     MemUtil->dumpActiveAllocationsToOutput();
 
-    for( const auto ptr : allocations )
+    for( void* ptr : allocations )
     {
         delete[] ptr;
     }
 
+
+    MemUtil->waitForAllAllocationsToBeResolved();
     MemUtil->toggleTracking( false );
 }
 
@@ -228,6 +230,7 @@ TEST_F( MemoryPoolTests, SpeedBenchmarkNewDeleteTracked )
     }
     auto elapsed = std::chrono::steady_clock::now() - start;
     m_trackedTimeNewDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+    MemUtil->waitForAllAllocationsToBeResolved();
     MemUtil->toggleTracking( false );
 }
 

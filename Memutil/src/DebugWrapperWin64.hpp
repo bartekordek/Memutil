@@ -13,16 +13,17 @@ extern "C"
     extern ___mu_t_RtlWalkFrameChain ___mu_RtlWalkFrameChain;
 }
 
-
 namespace MU
 {
+constexpr std::int32_t G_PointerOffset = 4;
+
 class DebugWrapperWin64 final: public IDebugWrapper
 {
 public:
     DebugWrapperWin64();
     ~DebugWrapperWin64();
 
-    MU_NONCOPYABLE( DebugWrapperWin64 );
+    MU_NONCOPYABLE( DebugWrapperWin64 )
 
 protected:
 private:

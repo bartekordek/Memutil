@@ -5,7 +5,6 @@
 #include <MemUtil/STL_Imports/STD_array.hpp>
 #include <MemUtil/STL_Imports/STD_mutex.hpp>
 
-
 namespace MU
 {
 
@@ -26,10 +25,10 @@ public:
     ~SLineInfo();
 };
 
-//using StackContents = StringStatic<2048>;
+// using StackContents = StringStatic<2048>;
 using StackContents = std::array<SLineInfo, G_MaxStackSize>;
 
-enum class EStackType: std::int8_t
+enum class EStackType : std::int8_t
 {
     None = -1,
     Alloc,
@@ -46,8 +45,8 @@ public:
     CIStack();
     CIStack( const CIStack& arg );
     CIStack( CIStack&& arg );
-    CIStack& operator=( const CIStack& arg ) = delete;
-    CIStack& operator=( CIStack&& arg ) = delete;
+    CIStack& operator=( const CIStack& arg );
+    CIStack& operator=( CIStack&& arg );
 
     virtual void fetch() = 0;
     virtual void decode() = 0;
@@ -56,10 +55,8 @@ public:
     virtual ~CIStack();
 
 protected:
-    const SLineInfo* getFromCache( void* inPtr ) const;
-    void addToCache( void* inPtr, SLineInfo* inLine );
 
 private:
-    mutable std::mutex m_cacheMtx;
+    static std::mutex s_cacheMtx;
 };
 }  // namespace MU

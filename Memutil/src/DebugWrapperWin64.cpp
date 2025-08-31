@@ -42,7 +42,12 @@ void DebugWrapperWin64::init()
 void DebugWrapperWin64::fillData( std::array<void*, G_MaxStackSize>& inOutData )
 {
     MU_MEASURE_SCOPE;
-    const auto num = ___mu_RtlWalkFrameChain( (void**)( inOutData.data() ), G_MaxStackSize, 0 );
+    constexpr std::size_t bufforSize = G_MaxStackSize + G_PointerOffset;
+    static thread_local std::array<void*, bufforSize> tempData;
+    const auto num = ___mu_RtlWalkFrameChain( (void**)( tempData.data() ), bufforSize, 0 );
+
+    std::memcpy( inOutData.data(), tempData.data() + G_PointerOffset, sizeof(void*) * G_MaxStackSize );
+
 }
 
 bool DebugWrapperWin64::getLineByOffset( std::uint64_t offset, std::uint64_t& inOutlineNum, char* inOutName, std::size_t inOutNameSize,

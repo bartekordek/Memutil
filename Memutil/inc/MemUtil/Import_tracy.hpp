@@ -1,10 +1,10 @@
 #pragma once
 
-#define MU_USE_TRACY 1
+
 
 #include "MemUtil/Generic/DisableWarnings.hpp"
 
-#if MU_USE_TRACY
+#if defined(TRACY_ENABLE)
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
 #endif  // #if MU_USE_TRACY
@@ -13,7 +13,7 @@
 #pragma warning( pop )
 #endif  // #if defined( _MSC_VER )
 
-#if MU_USE_TRACY
+#if defined(TRACY_ENABLE)
 #define MU_SET_THREAD_NAME TracyCSetThreadName
 #define MU_MEASURE_SCOPE ZoneScoped
 #define MU_MEASURE_SUBSCOPE ZoneNamedN
