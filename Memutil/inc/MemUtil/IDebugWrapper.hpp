@@ -3,6 +3,7 @@
 #include <MemUtil/Config.hpp>
 #include <MemUtil/Generic/NonCopyable.hpp>
 #include <MemUtil/STL_Imports/STD_array.hpp>
+#include <MemUtil/STL_Imports/STD_cstdint.hpp>
 
 namespace MU
 {
@@ -22,6 +23,5 @@ protected:
     virtual ~IDebugWrapper();
 
 private:
-
 };
-}
+}  // namespace MU
