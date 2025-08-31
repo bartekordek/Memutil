@@ -16,6 +16,7 @@ if( MSVC )
     add_compile_options( "/wd4820" )
     add_compile_options( "/wd4710" )
     add_compile_options( "/wd5045" )
+    add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)
 else()
     # lots of warnings and all warnings as errors
     add_compile_options( -Wall -Wextra -pedantic -Werror -Wno-unused-parameter )
@@ -23,8 +24,6 @@ else()
     add_compile_options( -Wno-unused-variable )
     add_definitions( -Wfatal-errors )
 endif()
-
-add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)
 
 ###################################################################
 
@@ -51,12 +50,12 @@ PRIVATE boost_static_assert
 PRIVATE boost_throw_exception
 PRIVATE boost_stacktrace
 PUBLIC TracyClient
-PRIVATE concurrentqueue
+PUBLIC concurrentqueue
 )
 else()
 set( DEPENDENCIES
 PUBLIC TracyClient
-PRIVATE concurrentqueue
+PUBLIC concurrentqueue
 )
 endif()
 
@@ -101,9 +100,9 @@ include_directories( ${BOOST_ROOT}/stacktrace/include )
 include_directories( ${BOOST_ROOT}/static_assert/include )
 include_directories( ${BOOST_ROOT}/throw_exception/include )
 include_directories( ${BOOST_ROOT}/winapi/include )
+message("[Debug] Including: $ENV{MU_DEPS_PATH}/concurrentqueue ")
+include_directories( SYSTEM $ENV{MU_DEPS_PATH}/concurrentqueue )
 include_directories( $ENV{MU_DEPS_PATH}/deps/tracy/public )
 
 target_include_directories(${PROJECT_NAME} PUBLIC inc)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
-
-add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)

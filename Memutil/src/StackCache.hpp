@@ -20,6 +20,6 @@ private:
     ~CStackCache();
 
 public:
-    MU_NONCOPYABLE( CStackCache );
+    MU_NONCOPYABLE( CStackCache )
 };
 }  // namespace MU
