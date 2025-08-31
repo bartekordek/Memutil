@@ -50,7 +50,7 @@ jobs:
 
     - name: Configure CMake
       working-directory: ${{github.workspace}}/Build
-      run: cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      run: cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
