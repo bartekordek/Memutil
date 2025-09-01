@@ -14,14 +14,14 @@
 #include <MemUtil/STL_Imports/STD_algorithm.hpp>
 #include <MemUtil/STL_Imports/STD_cmath.hpp>
 
-#if 0 // DEBUG_THIS_FILE
+#if 0  // DEBUG_THIS_FILE
     #define DEBUG_THIS_FILE 1
 
-    #if defined(CUL_COMPILER_MSVC)
+    #if defined( CUL_COMPILER_MSVC )
         #pragma optimize( "", off )
-    #elif defined(CUL_COMPILER_CLANG)
+    #elif defined( CUL_COMPILER_CLANG )
         #pragma clang optimize off
-    #elif defined(CUL_COMPILER_GCC)
+    #elif defined( CUL_COMPILER_GCC )
         #pragma GCC push_options
         #pragma GCC optimize( "O0" )
     #endif
@@ -62,7 +62,7 @@ void Memutil::init()
     }
 
     constexpr std::int8_t containerType = 1;
-    if(containerType == 0)
+    if( containerType == 0 )
     {
         m_stacksToBeDecoded = new ConcurentQueueAdapter<CStack>();
     }
@@ -70,14 +70,14 @@ void Memutil::init()
     {
         m_stacksToBeDecoded = new ListThreadSafe<CStack>();
     }
-    
+
     const std::size_t objectsToContain{ Pow<std::size_t>( 2u, 16u ) };
     m_stacksToBeDecoded->init( objectsToContain );
 #if PMR_ALLOCATED
     m_allocated.init( 64u * 1024u * 1024u );
 #else
     m_allocated = new std::unordered_map<void*, CStack>();
-#endif // PMR_ALLOCATED
+#endif  // PMR_ALLOCATED
 
     m_runMainLoop = true;
 
@@ -89,7 +89,6 @@ void Memutil::init()
     m_initialized = true;
     g_instance = this;
 }
-
 
 void Memutil::executeWithoutAllocationLog( std::function<void( void )> inLambda )
 {
@@ -131,7 +130,6 @@ void Memutil::logFree( void* inPtr )
     unregisterStack( inPtr, 0u );
 }
 
-
 void Memutil::registerStack( void* ptr, std::uint64_t inSize )
 {
     MU_MEASURE_SCOPE;
@@ -162,9 +160,9 @@ void Memutil::unregisterStack( void* ptr, std::uint64_t /*inSize*/ )
     MutexGuard locker( &m_allocatedMtx );
 
     beginUntracked();
-#if defined(_DEBUG)
+#if defined( _DEBUG )
     stack.fetch();
-#endif // defined(_DEBUG)
+#endif  // defined(_DEBUG)
 
     m_stacksToBeDecoded->addToBack( stack );
     endUntracked();
@@ -216,8 +214,10 @@ void Memutil::mainLoop()
         else if( currentTrace.Type == EStackType::Dealloc )
         {
             MutexGuard locker( &m_allocatedMtx );
+#if defined( _DEBUG ) || defined( MU_WINDOWS )
             const auto it = m_allocated->find( currentTrace.Data );
             assert( it != m_allocated->end() );
+#endif  // #if defined(_DEBUG)
 
             g_blockCurrentThread = true;
             m_allocated->erase( currentTrace.Data );
@@ -395,7 +395,6 @@ bool Memutil::dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t i
 
             if( currentWordSize < 1 )
             {
-                DebugBreak();
                 assert( false );
                 return false;
             }
@@ -471,7 +470,6 @@ std::int32_t Memutil::getActiveAllocations() const
     return static_cast<std::int32_t>( m_allocated->size() );
 }
 
-
 Memutil::~Memutil()
 {
     MU_MEASURE_SCOPE;
@@ -490,13 +488,12 @@ Memutil::~Memutil()
 
 }  // namespace MU
 
-
 #if defined( DEBUG_THIS_FILE )
-    #if defined(CUL_COMPILER_MSVC)
+    #if defined( CUL_COMPILER_MSVC )
         #pragma optimize( "", on )
-    #elif defined( CUL_COMPILER_CLANG)
+    #elif defined( CUL_COMPILER_CLANG )
         #pragma clang optimize on
-    #elif defined( CUL_COMPILER_GCC)
+    #elif defined( CUL_COMPILER_GCC )
         #pragma GCC pop_options
     #endif
 #endif  // #if defined(DEBUG_THIS_FILE)
