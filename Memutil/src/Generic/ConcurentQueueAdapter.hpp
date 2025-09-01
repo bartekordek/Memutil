@@ -12,7 +12,7 @@ public:
     MU_NONCOPYABLE( ConcurentQueueAdapter )
     ConcurentQueueAdapter() = default;
     void init( std::size_t /*inCapacity*/ ) override
-    {
+    { 
     }
 
     std::optional<C> getAndPopFront() override
