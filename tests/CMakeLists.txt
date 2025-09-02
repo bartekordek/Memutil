@@ -15,6 +15,7 @@ if (MSVC)
     add_compile_options( /MP )
 else()
     add_compile_options(-Wall -Wextra -pedantic)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
 endif()
 
 include_directories(src)

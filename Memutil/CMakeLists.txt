@@ -23,6 +23,7 @@ else()
     # -Wno-sized-deallocation
     add_compile_options( -Wno-unused-variable )
     add_definitions( -Wfatal-errors )
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
 endif()
 
 ###################################################################
