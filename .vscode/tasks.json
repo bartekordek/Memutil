@@ -47,6 +47,31 @@
             ]
         },
         {
+            "label": "[Build][tests][Linux][Release]",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "Build-Linux",
+                "--config",
+                "Release",
+                "-j16",
+                "--target",
+                "tests_bin"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "[Win64][DEBUG][BUILLD][run_tests]",
             "type": "shell",
             "command": "${workspaceFolder}/bin/tests_bin",
@@ -135,7 +160,7 @@
             "dependsOn": "[WINDOWS][CMAKE][CREATE]"
         },
         {
-            "label": "[WINDOWS][CMAKE][CREATE]",
+            "label": "[WINDOWS][CMAKE][CREATE][NoTracy]",
             "type": "shell",
             "command": "cmake -S . -B Build-Windows -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF",
             "group": {
@@ -155,9 +180,29 @@
             }
         },
         {
+            "label": "[WINDOWS][CMAKE][CREATE][WithTracy]",
+            "type": "shell",
+            "command": "cmake -S . -B Build-Windows -DTRACY_ENABLE:BOOLEAN=ON -DTRACY_ON_DEMAND:BOOLEAN=ON -DTRACY_CALLSTACK:BOOLEAN=ON",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
             "label": "[CMAKE][CREATE][Linux]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Linux -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF",
+            "command": "cmake -S . -B Build-Linux -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF -DCMAKE_BUILD_TYPE=Release",
             "group": {
                 "kind": "build",
                 "isDefault": true
