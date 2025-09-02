@@ -15,8 +15,6 @@ extern "C"
 
 namespace MU
 {
-constexpr std::int32_t G_PointerOffset = 4;
-
 class DebugWrapperWin64 final: public IDebugWrapper
 {
 public:
@@ -28,9 +26,9 @@ public:
 protected:
 private:
     void init() override;
-    void fillData( std::array<void*, G_MaxStackSize>& inOutData ) override;
+    void fillData( std::array<void*, G_DataSizePlusOffset>& inOutData ) override;
     bool getLineByOffset( std::uint64_t offset, std::uint64_t& inOutlineNum, char* inOutName, std::size_t inOutNameSize,
-                          std::uint64_t& outSize ) override;
+                          char* inOutFunctionName, std::size_t inOutFunctionNameSize, std::uint64_t& outSize ) override;
 
     ___mu_t_RtlWalkFrameChain ___mu_RtlWalkFrameChain = 0;
 

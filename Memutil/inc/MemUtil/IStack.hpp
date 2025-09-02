@@ -11,7 +11,8 @@ namespace MU
 class SLineInfo final
 {
 public:
-    StringStatic<256> Value;
+    StringStatic<256> FileName;
+    StringStatic<256> FunctionName;
     std::uint16_t Number;
 
     SLineInfo();
@@ -55,7 +56,6 @@ public:
     virtual ~CIStack();
 
 protected:
-
 private:
     static std::mutex s_cacheMtx;
 };

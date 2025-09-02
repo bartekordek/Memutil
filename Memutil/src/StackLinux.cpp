@@ -1,12 +1,12 @@
 #include <MemUtil/StackLinux.hpp>
 
 #if defined( MU_LINUX )
-#include <MemUtil/STL_Imports/STD_iostream.hpp>
-#include <MemUtil/STL_Imports/STD_array.hpp>
-#include "Import_boost_stacktrace.hpp"
-#include <unwind.h>
-#include <backtrace.h>
-
+    #include <MemUtil/STL_Imports/STD_iostream.hpp>
+    #include <MemUtil/STL_Imports/STD_array.hpp>
+    #include "Import_boost_stacktrace.hpp"
+    #include <unwind.h>
+    #include <backtrace.h>
+    #include <cxxabi.h>
 using native_frame_ptr_t = void*;
 
 struct unwind_state
@@ -45,7 +45,10 @@ inline int libbacktrace_full_callback( void* data, uintptr_t /*pc*/, const char*
     SLineInfo* line = static_cast<SLineInfo*>( data );
     if( filename )
     {
-        line->Value = filename;
+        int status = 0;
+        const char* demangled = abi::__cxa_demangle( function, nullptr, nullptr, &status );
+        line->FunctionName = demangled == nullptr ? function : demangled;
+        line->FileName = filename;
         line->Number = lineno;
     }
     return 0;
@@ -57,6 +60,49 @@ inline void libbacktrace_error_callback( void* /*data*/, const char* /*msg*/, in
 }
 
 backtrace_state* CStackLinux::s_backTrace{ nullptr };
+
+CStackLinux::CStackLinux():
+    CIStack()
+{
+}
+
+CStackLinux::CStackLinux( const CStackLinux& arg ):
+    CIStack( arg )
+{
+    m_stackFrames = arg.m_stackFrames;
+    m_data = arg.m_data;
+}
+
+CStackLinux::CStackLinux( CStackLinux&& arg ):
+    CIStack( arg )
+{
+    m_stackFrames = std::move( arg.m_stackFrames );
+    m_data = std::move( arg.m_data );
+}
+
+CStackLinux& CStackLinux::operator=( const CStackLinux& arg )
+{
+    if( this != &arg )
+    {
+        CIStack::operator=( arg );
+        m_stackFrames = arg.m_stackFrames;
+        m_data = arg.m_data;
+    }
+
+    return *this;
+}
+
+CStackLinux& CStackLinux::operator=( CStackLinux&& arg )
+{
+    if( this != &arg )
+    {
+        CIStack::operator=( arg );
+        m_stackFrames = std::move( arg.m_stackFrames );
+        m_data = std::move( arg.m_data );
+    }
+
+    return *this;
+}
 
 void CStackLinux::fetch()
 {
@@ -95,6 +141,10 @@ bool CStackLinux::operator==( const CStackLinux& arg ) const
 const StackContents& CStackLinux::getStackLines() const
 {
     return m_stackFrames;
+}
+
+CStackLinux::~CStackLinux()
+{
 }
 
 }  // namespace MU

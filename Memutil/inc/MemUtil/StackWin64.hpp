@@ -26,6 +26,7 @@ public:
 protected:
 private:
     StackContents m_stackFrames;
+    std::array<void*, G_DataSizePlusOffset> m_dataTemp;
     std::array<void*, G_MaxStackSize> m_data;
 };
 

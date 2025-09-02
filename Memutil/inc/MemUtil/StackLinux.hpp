@@ -11,10 +11,19 @@ namespace MU
 class CStackLinux final: public CIStack
 {
 public:
+    CStackLinux();
+    CStackLinux( const CStackLinux& arg );
+    CStackLinux( CStackLinux&& arg );
+
+    CStackLinux& operator=( const CStackLinux& arg );
+    CStackLinux& operator=( CStackLinux&& arg );
+
     void fetch() override;
     void decode() override;
     const StackContents& getStackLines() const override;
     bool operator==( const CStackLinux& arg ) const;
+
+    ~CStackLinux();
 
 protected:
 private:

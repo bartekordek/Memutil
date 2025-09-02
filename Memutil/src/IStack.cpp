@@ -8,7 +8,7 @@ namespace MU
 {
 bool SLineInfo::operator==( const SLineInfo& arg ) const
 {
-    return ( Value == arg.Value ) && ( Number == arg.Number );
+    return ( FileName == arg.FileName ) && ( Number == arg.Number );
 }
 
 SLineInfo::SLineInfo()
@@ -16,13 +16,15 @@ SLineInfo::SLineInfo()
 }
 
 SLineInfo::SLineInfo( const SLineInfo& arg ):
-    Value( arg.Value ),
+    FileName( arg.FileName ),
+    FunctionName(arg.FunctionName),
     Number( arg.Number )
 {
 }
 
 SLineInfo::SLineInfo( SLineInfo&& arg ):
-    Value( arg.Value ),
+    FileName( arg.FileName ),
+    FunctionName( arg.FunctionName ),
     Number( arg.Number )
 {
 }
@@ -31,7 +33,8 @@ SLineInfo& SLineInfo::operator=( SLineInfo&& arg )
 {
     if( this != &arg )
     {
-        Value = arg.Value;
+        FileName = arg.FileName;
+        FunctionName = arg.FunctionName;
         Number = arg.Number;
     }
     return *this;
@@ -41,7 +44,8 @@ SLineInfo& SLineInfo::operator=( const SLineInfo& arg )
 {
     if( this != &arg )
     {
-        Value = arg.Value;
+        FileName = arg.FileName;
+        FunctionName = arg.FunctionName;
         Number = arg.Number;
     }
     return *this;

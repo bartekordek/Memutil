@@ -209,6 +209,7 @@ void Memutil::mainLoop()
             MU_MEASURE_SUBSCOPE( MemutilmainLoop_02, "lock", true );
             g_blockCurrentThread = true;
             ( *m_allocated )[currentTrace.Data] = currentTrace;
+            const auto eeh = ( *m_allocated )[currentTrace.Data];
             g_blockCurrentThread = false;
         }
         else if( currentTrace.Type == EStackType::Dealloc )
@@ -289,9 +290,9 @@ void Memutil::dumpActiveAllocationsToOutput_impl()
 
         for( const auto& line : group.Stack.getStackLines() )
         {
-            if( line.Value.empty() == false )
+            if( line.FileName.empty() == false )
             {
-                printf( "%s : %d\n", line.Value.c_str(), line.Number );
+                printf( "%s : %d\n", line.FileName.c_str(), line.Number );
             }
         }
     }
@@ -385,13 +386,13 @@ bool Memutil::dumpActiveAllocationsToBuffer_impl( char* outBuffer, std::size_t i
                 return false;
             }
 
-            if( line.Value.empty() )
+            if( line.FileName.empty() )
             {
                 ++num;
                 continue;
             }
 
-            currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "%s:%d\n", line.Value.c_str(), line.Number );
+            currentWordSize = snprintf( outBuffer, static_cast<std::size_t>( bufferLeft ), "%s:%d\n", line.FileName.c_str(), line.Number );
 
             if( currentWordSize < 1 )
             {

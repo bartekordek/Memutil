@@ -39,19 +39,14 @@ void DebugWrapperWin64::init()
     MU_MEASURE_SCOPE;
 }
 
-void DebugWrapperWin64::fillData( std::array<void*, G_MaxStackSize>& inOutData )
+void DebugWrapperWin64::fillData( std::array<void*, G_DataSizePlusOffset>& inOutData )
 {
     MU_MEASURE_SCOPE;
-    constexpr std::size_t bufforSize = G_MaxStackSize + G_PointerOffset;
-    static thread_local std::array<void*, bufforSize> tempData;
-    const auto num = ___mu_RtlWalkFrameChain( (void**)( tempData.data() ), bufforSize, 0 );
-
-    std::memcpy( inOutData.data(), tempData.data() + G_PointerOffset, sizeof(void*) * G_MaxStackSize );
-
+    const auto num = ___mu_RtlWalkFrameChain( (void**)( inOutData.data() ), inOutData.size(), 0 );
 }
 
 bool DebugWrapperWin64::getLineByOffset( std::uint64_t offset, std::uint64_t& inOutlineNum, char* inOutName, std::size_t inOutNameSize,
-                                         std::uint64_t& outSize )
+                                         char* inOutFunctionName, std::size_t inOutFunctionNameSize, std::uint64_t& outSize )
 {
     ULONG lineNum;
     ULONG currentSize;
@@ -59,6 +54,10 @@ bool DebugWrapperWin64::getLineByOffset( std::uint64_t offset, std::uint64_t& in
     // if( idebug->GetLineByOffset( offset, &lineNum, name, sizeof( name ), &size, nullptr ) != S_OK )
     inOutlineNum = lineNum;
     outSize = currentSize;
+
+    ULONG nameSize{ 0u };
+    m_debugSymbols->GetNameByOffset( offset, inOutFunctionName, inOutFunctionNameSize, &nameSize, 0u );
+
     return result;
 }
 
