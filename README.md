@@ -1,4 +1,4 @@
-[![CMake on multiple platforms](https://github.com/bartekordek/Memutil/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/bartekordek/Memutil/actions/workflows/cmake-multi-platform.yml)
+[![CMake on multiple platforms](https://github.com/bartekordek/Memutil/actions/workflows/cmake-multi-platform.yml/badge.svg?branch=main)](https://github.com/bartekordek/Memutil/actions/workflows/cmake-multi-platform.yml)
 
 ## Synopsis
 
