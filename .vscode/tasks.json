@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "[LINUX][DEBUG][BUILLD][run_tests]",
+            "label": "[Run][run_tests][Linux][Debug]",
             "type": "shell",
             "command": "${workspaceFolder}/bin/tests_bin",
             "args": [],
@@ -22,12 +22,12 @@
             "dependsOn": "[LINUX][DEBUG][BUILLD][tests]"
         },
         {
-            "label": "[LINUX][DEBUG][BUILLD][tests]",
+            "label": "[Build][tests][Linux][Debug]",
             "type": "shell",
             "command": "cmake",
             "args": [
                 "--build",
-                "Build",
+                "Build-Linux",
                 "--config",
                 "DEBUG",
                 "-j16",
@@ -44,21 +44,25 @@
             },
             "problemMatcher": [
                 "$gcc"
-            ],
-            "dependsOn": "[LINUX][CMAKE][CREATE][DEBUG]"
+            ]
         },
         {
-            "label": "[LINUX][CMAKE][CREATE][DEBUG]",
+            "label": "[Build][tests][Linux][Release]",
             "type": "shell",
-            "command": "cmake -S . -B Build -DCMAKE_BUILD_TYPE=Debug",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "command": "cmake",
+            "args": [
+                "--build",
+                "Build-Linux",
+                "--config",
+                "Release",
+                "-j16",
+                "--target",
+                "tests_bin"
+            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": false,
+                "focus": true,
                 "panel": "dedicated",
                 "showReuseMessage": false,
                 "clear": true
@@ -86,6 +90,24 @@
             "dependsOn": "[Win64][DEBUG][BUILLD][tests]"
         },
         {
+            "label": "[Win64][RelWithDebInfo][BUILLD][run_tests]",
+            "type": "shell",
+            "command": "${workspaceFolder}/Build-Windows/tests/RelWithDebInfo/tests_bin.exe",
+            "args": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "dependsOn": "[Win64][RelWithDebInfo][BUILLD][tests]"
+        },
+        {
             "label": "[Win64][DEBUG][BUILLD][tests]",
             "type": "shell",
             "command": "cmake",
@@ -109,12 +131,78 @@
             "problemMatcher": [
                 "$msCompile"
             ],
-            "dependsOn": "[WINDOWS][CMAKE][CREATE][DEBUG]"
+            "dependsOn": "[WINDOWS][CMAKE][CREATE]"
         },
         {
-            "label": "[WINDOWS][CMAKE][CREATE][DEBUG]",
+            "label": "[Win64][RelWithDebInfo][BUILLD][tests]",
             "type": "shell",
-            "command": "cmake -S . -B Build-Windows -DCMAKE_BUILD_TYPE=Debug",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "Build-Windows",
+                "--config",
+                "RelWithDebInfo",
+                "-j16",
+                "--target",
+                "tests_bin"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "dependsOn": "[WINDOWS][CMAKE][CREATE]"
+        },
+        {
+            "label": "[WINDOWS][CMAKE][CREATE][NoTracy]",
+            "type": "shell",
+            "command": "cmake -S . -B Build-Windows -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "[WINDOWS][CMAKE][CREATE][WithTracy]",
+            "type": "shell",
+            "command": "cmake -S . -B Build-Windows -DTRACY_ENABLE:BOOLEAN=ON -DTRACY_ON_DEMAND:BOOLEAN=ON -DTRACY_CALLSTACK:BOOLEAN=ON",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "[CMAKE][CREATE][Linux]",
+            "type": "shell",
+            "command": "cmake -S . -B Build-Linux -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF -DCMAKE_BUILD_TYPE=Release",
             "group": {
                 "kind": "build",
                 "isDefault": true

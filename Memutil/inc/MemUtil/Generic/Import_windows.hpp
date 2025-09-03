@@ -1,9 +1,9 @@
 #pragma once
 
+#if defined( _MSC_VER )
 #include "MemUtil/Generic/DisableWarnings.hpp"
 
-#include "boost/stacktrace.hpp"
+#include <windows.h>
 
-#ifdef _MSC_VER
 #pragma warning( pop )
 #endif

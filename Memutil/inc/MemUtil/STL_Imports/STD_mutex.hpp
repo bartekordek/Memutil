@@ -2,8 +2,8 @@
 
 #include "MemUtil/Generic/DisableWarnings.hpp"
 
-#include <thread>
+#include <mutex>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #pragma warning( pop )
 #endif

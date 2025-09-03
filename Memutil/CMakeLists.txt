@@ -1,13 +1,11 @@
-#cmake -DCMAKE_BUILD_TYPE=Debug
-cmake_minimum_required (VERSION 3.5)
-
-set( CMAKE_CXX_STANDARD 20 )
-
 set( PROJECT_NAME memutil )
 
 project(${PROJECT_NAME} LANGUAGES CXX)
 
+set( CMAKE_CXX_STANDARD 20 )
+
 set( CMAKE_ENABLE_EXPORTS true )
+set( CMAKE_VERBOSE_MAKEFILE true )
 
 if( MSVC )
     # warning level 4 and all warnings as errors
@@ -18,12 +16,14 @@ if( MSVC )
     add_compile_options( "/wd4820" )
     add_compile_options( "/wd4710" )
     add_compile_options( "/wd5045" )
+    add_definitions(-DBOOST_STACKTRACE_USE_WINDBG_CACHED)
 else()
     # lots of warnings and all warnings as errors
     add_compile_options( -Wall -Wextra -pedantic -Werror -Wno-unused-parameter )
     # -Wno-sized-deallocation
     add_compile_options( -Wno-unused-variable )
     add_definitions( -Wfatal-errors )
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
 endif()
 
 ###################################################################
@@ -38,6 +38,7 @@ add_library( ${PROJECT_NAME} STATIC ${SOURCES} )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/inc )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/src )
 
+if (MSVC)
 set( DEPENDENCIES
 PUBLIC boost_assert
 PRIVATE boost_config
@@ -49,13 +50,19 @@ PRIVATE boost_predef
 PRIVATE boost_static_assert
 PRIVATE boost_throw_exception
 PRIVATE boost_stacktrace
+PUBLIC TracyClient
+PUBLIC concurrentqueue
 )
+else()
+set( DEPENDENCIES
+PUBLIC TracyClient
+PUBLIC concurrentqueue
+)
+endif()
 
 if (MSVC)
-    list(APPEND DEPENDENCIES PUBLIC boost_winapi)
-    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_windbg_cached)
 else()
-    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace_basic)
+    list(APPEND DEPENDENCIES PUBLIC boost_stacktrace)
 endif()
 
 message( "DEPENDENCIES: ${DEPENDENCIES}" )
@@ -68,7 +75,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE MU_STATIC=1 )
 if (MSVC)
     list(APPEND LIBS msvcmrtd )
     target_link_options(${PROJECT_NAME} PUBLIC "/INCREMENTAL:NO")
-    target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} )
+    target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} DbgEng user32 advapi32 dbghelp )
 else()
     target_link_libraries( ${PROJECT_NAME} ${DEPENDENCIES} stdc++fs )
 endif()
@@ -94,6 +101,9 @@ include_directories( ${BOOST_ROOT}/stacktrace/include )
 include_directories( ${BOOST_ROOT}/static_assert/include )
 include_directories( ${BOOST_ROOT}/throw_exception/include )
 include_directories( ${BOOST_ROOT}/winapi/include )
+message("[Debug] Including: $ENV{MU_DEPS_PATH}/concurrentqueue ")
+include_directories( SYSTEM $ENV{MU_DEPS_PATH}/concurrentqueue )
+include_directories( $ENV{MU_DEPS_PATH}/deps/tracy/public )
 
 target_include_directories(${PROJECT_NAME} PUBLIC inc)
 target_include_directories(${PROJECT_NAME} PRIVATE src)

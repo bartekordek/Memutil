@@ -2,11 +2,7 @@
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: CMake on multiple platforms
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -24,7 +20,7 @@ jobs:
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
         os: [ubuntu-latest, windows-latest]
-        build_type: [Release]
+        build_type: [Debug,Release]
         c_compiler: [gcc, clang, cl]
         include:
           - os: windows-latest
@@ -54,7 +50,7 @@ jobs:
 
     - name: Configure CMake
       working-directory: ${{github.workspace}}/Build
-      run: cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      run: cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTRACY_ENABLE:BOOLEAN=OFF -DTRACY_ON_DEMAND:BOOLEAN=OFF -DTRACY_CALLSTACK:BOOLEAN=OFF
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).

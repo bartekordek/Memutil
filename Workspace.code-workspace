@@ -123,7 +123,18 @@
 			"expected": "cpp",
 			"format": "cpp",
 			"ranges": "cpp",
-			"source_location": "cpp"
+			"source_location": "cpp",
+			"barrier": "cpp",
+			"latch": "cpp",
+			"numbers": "cpp",
+			"semaphore": "cpp",
+			"spanstream": "cpp",
+			"stacktrace": "cpp",
+			"stdfloat": "cpp",
+			"syncstream": "cpp",
+			"generator": "cpp",
+			"print": "cpp",
+			"text_encoding": "cpp"
 		}
 	}
 }

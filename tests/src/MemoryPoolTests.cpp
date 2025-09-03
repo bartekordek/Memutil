@@ -1,150 +1,359 @@
 #include "MemoryPoolTests.hpp"
 #include <MemUtil/Memutil.hpp>
+#include <MemUtil/Import_tracy.hpp>
 #include <MemUtil/STL_Imports/STD_chrono.hpp>
 #include <MemUtil/STL_Imports/STD_random.hpp>
 #include <MemUtil/STL_Imports/STD_vector.hpp>
 
+namespace Allocator
+{
+void* allocate( std::size_t inSize )
+{
+    MU_MEASURE_SCOPE;
+    return std::malloc( inSize );
+}
+
+void deallocate( void* ptr )
+{
+    MU_MEASURE_SCOPE;
+    std::free( ptr );
+}
+
+}  // namespace Allocator
+
 void* operator new( std::size_t size )
 {
-    void* result = std::malloc( size );
+    MU_MEASURE_SCOPE;
+    void* result = Allocator::allocate( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
 }
 
 void* operator new[]( std::size_t size )
 {
-    void* result = std::malloc( size );
+    MU_MEASURE_SCOPE;
+    void* result = Allocator::allocate( size );
     MU::Memutil::getInstance().logAlloc( result, size );
     return result;
 }
 
 void operator delete( void* ptr ) noexcept
 {
+    MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete( void* ptr, std::size_t /*size*/ ) noexcept
 {
+    MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete[]( void* ptr ) noexcept
 {
+    MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 void operator delete[]( void* ptr, std::size_t /*size*/ ) noexcept
 {
+    MU_MEASURE_SCOPE;
     MU::Memutil::getInstance().logFree( ptr );
-    std::free( ptr );
+    Allocator::deallocate( ptr );
 }
 
 MemoryPoolTests::MemoryPoolTests()
 {
+
+}
+
+void MemoryPoolTests::SetUp()
+{
+}
+
+MU::Memutil* MemoryPoolTests::MemUtil{ nullptr };
+std::size_t MemoryPoolTests::m_samplesCount{ 0u };
+
+std::vector<std::uint64_t> MemoryPoolTests::m_sampels;
+std::vector<void*> MemoryPoolTests::m_ptrs;
+
+float MemoryPoolTests::m_trackedTimeNewDelete{ 0.f };
+float MemoryPoolTests::m_untrackedTimeNewDelete{ 0.f };
+
+float MemoryPoolTests::m_trackedNew{ 0.f };
+float MemoryPoolTests::m_untrackedNew{ 0.f };
+
+float MemoryPoolTests::m_trackedDelete{ 0.f };
+float MemoryPoolTests::m_untrackedDelete{ 0.f };
+
+void MemoryPoolTests::SetUpTestSuite()
+{
+    MU_MEASURE_SCOPE;
+    MemUtil = &MU::Memutil::getInstance();
+
+    m_samplesCount = 500000;
+    m_sampels.resize( m_samplesCount );
+    m_ptrs.resize( m_samplesCount );
+
+    constexpr std::size_t maxAllocationBlock{ 8192 };
+
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        const std::uint64_t currentSize = getRandom( 2, maxAllocationBlock );
+        m_sampels[i] = currentSize;
+    }
+}
+
+void MemoryPoolTests::TearDown()
+{
+    MU_MEASURE_SCOPE;
+    MemUtil->waitForAllCallStacksToBeDecoded();
 }
 
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION )
 {
-    MU::Memutil& instance = MU::Memutil::getInstance();
-    instance.toggleTracking( true );
+    MU_MEASURE_SCOPE;
+    MemUtil->toggleTracking( true );
 
     TestClass<8>* tc = new TestClass<8>();
-    instance.waitForAllCallStacksToBeDecoded();
-    instance.dumpActiveAllocationsToOutput();
+    MemUtil->waitForAllCallStacksToBeDecoded();
+
+    MemUtil->dumpActiveAllocationsToOutput();
 
     delete tc;
-    instance.toggleTracking( false );
+    MemUtil->toggleTracking( false );
 }
 
 TEST_F( MemoryPoolTests, TwoAllocations )
 {
+    MU_MEASURE_SCOPE;
     std::size_t allocCount{ 2u };
 
     std::vector<TestClass<8>*> pointers;
     pointers.resize( allocCount );
 
-    MU::Memutil& instance = MU::Memutil::getInstance();
-    instance.toggleTracking( true );
+    MemUtil->toggleTracking( true );
 
     for( std::size_t i = 0u; i < allocCount; ++i )
     {
         pointers[i] = new TestClass<8>();
     }
 
-    instance.waitForAllCallStacksToBeDecoded();
-    instance.dumpActiveAllocationsToOutput();
+    MemUtil->waitForAllCallStacksToBeDecoded();
+    MemUtil->dumpActiveAllocationsToOutput();
 
     for( std::size_t i = 0u; i < allocCount; ++i )
     {
         delete pointers[i];
     }
-    instance.toggleTracking( false );
+    MemUtil->toggleTracking( false );
 }
 
 TEST_F( MemoryPoolTests, TEST_SINGLE_ALLOCATION_TO_CHAR_BUF )
 {
-    constexpr std::size_t buffSize{ 2048 };
+    MU_MEASURE_SCOPE;
+    constexpr std::size_t buffSize{ 8192 };
     char* charOutput = new char[buffSize];
 
-    MU::Memutil& instance = MU::Memutil::getInstance();
-    instance.toggleTracking( true );
+    MemUtil->toggleTracking( true );
 
     TestClass<8>* tc = new TestClass<8>();
-    instance.waitForAllCallStacksToBeDecoded();
-    instance.dumpActiveAllocationsToBuffer( charOutput, buffSize );
+    MemUtil->waitForAllCallStacksToBeDecoded();
+    ASSERT_TRUE( MemUtil->dumpActiveAllocationsToBuffer( charOutput, buffSize ) );
 
     printf( "char buff:\n%s\n", charOutput );
 
     delete tc;
-    instance.toggleTracking( false );
+    MemUtil->toggleTracking( false );
 
     delete[] charOutput;
 }
 
-TEST_F( MemoryPoolTests, SpeedBenchmark )
+TEST_F( MemoryPoolTests, SortingValues )
 {
-    const std::size_t testSampleCount{ 8000000 };
-    const std::size_t maxAllocationBlock{ 16384 };
+    MU_MEASURE_SCOPE;
 
-    std::vector<std::uint64_t> samples;
-    samples.resize( testSampleCount );
+    MemUtil->toggleTracking( false );
 
-    for( std::size_t i = 0; i < testSampleCount; ++i )
+    std::vector<void*> allocations;
+    allocations.reserve( 2048 );
+
+    // Allocate 256 block with 2B.
+    MemUtil->toggleTracking( true );
+    for( std::size_t i = 0u; i < 256; ++i )
     {
-        const std::uint64_t currentSize = getRandom( 2, maxAllocationBlock );
-        samples[i] = currentSize;
+        std::byte* ptr = new std::byte[2];
+        allocations.push_back( ptr );
     }
 
-    auto runAllocations = [&samples]()
+    // Allocate 8 block with 4B.
+    for( std::size_t i = 0u; i < 8; ++i )
     {
-        auto start = std::chrono::steady_clock::now();
-        for( std::size_t i = 0; i < testSampleCount; ++i )
-        {
-            std::byte* allocatedMemory = new std::byte[samples[i]];
-            delete[] allocatedMemory;
-        }
-        auto elapsed = std::chrono::steady_clock::now() - start;
-        std::uint64_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count();
-        return static_cast<float>( milliseconds );
-    };
+        std::byte* ptr = new std::byte[4];
+        allocations.push_back( ptr );
+    }
 
-    const float without = runAllocations();
+    // Allocate 4 block with 16B.
+    for( std::size_t i = 0u; i < 4; ++i )
+    {
+        std::byte* ptr = new std::byte[16];
+        allocations.push_back( ptr );
+    }
 
-    MU::Memutil& instance = MU::Memutil::getInstance();
+    MemUtil->waitForAllCallStacksToBeDecoded();
+    MemUtil->dumpActiveAllocationsToOutput();
 
-    instance.toggleTracking( true );
-    const float with = runAllocations();
-    instance.toggleTracking( false );
+    for( void* ptr : allocations )
+    {
+        delete[] ptr;
+    }
 
-    printf( "%18s %4.0f ms\n", "Without tracking: ", without );
-    printf( "%18s %4.0f ms\n", "With tracking: ", with );
-    printf( "Tracked is %2.0f%% longer than untracked.\n", ( 100.0 * with / without ) - 100.0f );
+
+    MemUtil->waitForAllAllocationsToBeResolved();
+    MemUtil->toggleTracking( false );
 }
 
+TEST_F( MemoryPoolTests, SpeedBenchmarkNewDeleteTracked )
+{
+    MU_MEASURE_SCOPE;
 
+    MemUtil->toggleTracking( true );
+    auto start = std::chrono::steady_clock::now();
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        MU_MEASURE_SCOPE;
+        std::byte* allocatedMemory = new std::byte[m_sampels[i]];
+        delete[] allocatedMemory;
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_trackedTimeNewDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+    MemUtil->waitForAllAllocationsToBeResolved();
+    MemUtil->toggleTracking( false );
+}
+
+TEST_F( MemoryPoolTests, SpeedBenchmarkNewDeleteUnTracked )
+{
+    MemUtil->toggleTracking( false );
+
+    MU_MEASURE_SCOPE;
+
+    auto start = std::chrono::steady_clock::now();
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        MU_MEASURE_SCOPE;
+        std::byte* allocatedMemory = new std::byte[m_sampels[i]];
+        delete[] allocatedMemory;
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_untrackedTimeNewDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+}
+
+TEST_F( MemoryPoolTests, SpeedBenchmarkNewTracked )
+{
+    MU_MEASURE_SCOPE;
+
+    MemUtil->toggleTracking( true );
+    auto start = std::chrono::steady_clock::now();
+    {
+        MU_MEASURE_SUBSCOPE( SpeedBenchmarkNewTracked_MAIN, "SpeedBenchmarkNewTracked_MAIN", true );
+        for( std::size_t i = 0; i < m_samplesCount; ++i )
+        {
+            m_ptrs[i] = new std::byte[m_sampels[i]];
+        }
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_trackedNew = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        delete m_ptrs[i];
+    }
+    MemUtil->toggleTracking( false );
+}
+
+TEST_F( MemoryPoolTests, SpeedBenchmarkNewUntracked )
+{
+    MemUtil->toggleTracking( false );
+
+    MU_MEASURE_SCOPE;
+
+    auto start = std::chrono::steady_clock::now();
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        MU_MEASURE_SCOPE;
+        m_ptrs[i] = new std::byte[m_sampels[i]];
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_untrackedNew = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        delete m_ptrs[i];
+    }
+}
+
+TEST_F( MemoryPoolTests, SpeedBenchmarkDeleteTracked )
+{
+    MU_MEASURE_SCOPE;
+
+    MemUtil->toggleTracking( true );
+
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        m_ptrs[i] = new std::byte[m_sampels[i]];
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    {
+        MU_MEASURE_SUBSCOPE( SpeedBenchmarkDeleteTrackedMAIN, "SpeedBenchmarkDeleteTrackedMAIN", true );
+        for( std::size_t i = 0; i < m_samplesCount; ++i )
+        {
+            delete m_ptrs[i];
+        }
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_trackedDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+    MemUtil->toggleTracking( false );
+}
+
+TEST_F( MemoryPoolTests, SpeedBenchmarkDeleteUntracked )
+{
+    MemUtil->toggleTracking( false );
+
+    MU_MEASURE_SCOPE;
+
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        MU_MEASURE_SCOPE;
+        m_ptrs[i] = new std::byte[m_sampels[i]];
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    for( std::size_t i = 0; i < m_samplesCount; ++i )
+    {
+        delete m_ptrs[i];
+    }
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    m_untrackedDelete = static_cast<float>( std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count() );
+}
+
+void MemoryPoolTests::TearDownTestSuite()
+{
+    printf( "%18s %4.0f ms\n", "Without tracking: ", m_untrackedTimeNewDelete );
+    printf( "%18s %4.0f ms\n", "With tracking: ", m_trackedTimeNewDelete );
+    printf( "Tracked is %2.0f%% longer than untracked.\n\n", ( 100.0 * m_trackedTimeNewDelete / m_untrackedTimeNewDelete ) - 100.0f );
+
+    printf( "%18s %4.0f ms\n", "New Without tracking: ", m_untrackedNew );
+    printf( "%18s %4.0f ms\n", "New With tracking: ", m_trackedNew );
+    printf( "Tracked is %2.0f%% longer than untracked.\n\n", ( 100.0 * m_trackedNew / m_untrackedNew ) - 100.0f );
+
+    printf( "%18s %4.0f ms\n", "Delete Without tracking: ", m_untrackedDelete );
+    printf( "%18s %4.0f ms\n", "Delete With tracking: ", m_trackedDelete );
+    printf( "Tracked is %2.0f%% longer than untracked.\n\n", ( 100.0 * m_trackedDelete / m_untrackedDelete ) - 100.0f );
+}
 
 std::uint64_t MemoryPoolTests::getRandom( std::uint64_t from, std::uint64_t to )
 {
